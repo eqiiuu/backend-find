@@ -15,9 +15,11 @@ return new class extends Migration
             $table->string('community_id')->primary();
             $table->string('owner_id'); // relasi ke users.user_id
             $table->string('gambar')->nullable(); // path ke gambar
-            $table->float('koordinat');
+            $table->decimal('latitude', 10, 8);
+            $table->decimal('longitude', 11, 8);
             $table->text('description');
             $table->json('anggota')->nullable(); // array of user_id
+            $table->string('post_id')->nullable();
             $table->integer('capacity');
             $table->timestamps();
         });

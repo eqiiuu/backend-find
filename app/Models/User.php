@@ -72,4 +72,16 @@ class User extends Authenticatable
     {
         return $this->morphTo('tokenable', 'tokenable_type', 'tokenable_id', 'user_id');
     }
+
+    // Many-to-many relationship with chat groups
+    public function chatGroups()
+    {
+        return $this->belongsToMany(ChatGroup::class, 'chat_group_user', 'user_id', 'chat_group_id')
+            ->withTimestamps();
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'user_id', 'user_id');
+    }
 }

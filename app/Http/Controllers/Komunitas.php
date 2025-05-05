@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Community;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class Komunitas extends Controller
 {
@@ -13,29 +15,35 @@ class Komunitas extends Controller
         return Community::all();
     }
 
-    // Menyimpan data komunitas baru
-    public function store(Request $request)
+    public function createCommunity(Request $request)
     {
-        $validated = $request->validate([
-            'community_id' => 'required',
-            'owner_id' => 'required',
-            'gambar' => 'nullable',
-            'koordinat' => 'required',
+        $request->validate([
+            'name' => 'required|string',
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5048',
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180',
             'description' => 'required',
             'anggota' => 'nullable',
-            'capacity' => 'required',
+            'capacity' => 'required|integer|min:1',
         ]);
-        Community::create([
-            'community_id'=>$request->community_id,
-            'owner_id'=>$request->owner_id,
-            'gambar'=>$request->gambar,
-            'koordinat'=>$request->koordinat,
-            'description'=>$request->description,
-            'anggota'=>$request->json_encode($request->anggota),
-            'capacity'=>$request->capacity
+
+        $imagePath = null;
+
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('images/community', 'public');
+        }
+
+        Communitie::create([
+            'owner_id' => Auth::user()->user_id,
+            'name' => $request->name,
+            'gambar' => $imagePath,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'description' => $request->description,
+            'anggota' => $request->anggota,
+            'capacity' => $request->capacity
         ]);
-        dd($community); // Cek hasil simpan
-        return response()->json(['message'=>'berhasil registrasi'], 201);
+        return response()->json(['message'=>'BERHASIL REGISTRASI!'], 201);
     }
 
     // Menampilkan detail komunitas tertentu

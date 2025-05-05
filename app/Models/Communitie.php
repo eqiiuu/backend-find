@@ -18,7 +18,8 @@ class Communitie extends Model
         'community_id',
         'owner_id',
         'gambar',
-        'koordinat',
+        'latitude',
+        'longitude',
         'description',
         'anggota',
         'capacity'
@@ -27,7 +28,8 @@ class Communitie extends Model
     // Tipe data otomatis
     protected $casts = [
         'anggota' => 'array',
-        'koordinat' => 'float',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     // (Opsional) Relasi ke model User
@@ -40,5 +42,16 @@ class Communitie extends Model
     public function posts()
     {
         return $this->hasMany(Post::class, 'community_id', 'community_id');
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->community_id)) {
+                $model->community_id = 'community_' . Str::random(10);
+            }
+        });
     }
 }

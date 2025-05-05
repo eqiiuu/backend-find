@@ -16,22 +16,27 @@ class authController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'=>'required',
+            'username'=>'required',
+            'name'=>'nullable',
             'email'=>'required',
             'password'=>'required',
             'nomor_telepon' => 'required'
         ]);
+
+        $name = $request->name ?? $request->username;
+
         User::create([
-            'name'=>$request->name,
+            'username'=>$request->username,
+            'name'=>$name,
             'email'=>$request->email,
             'password'=>Hash::make($request->password),
             'nomor_telepon'=>$request->nomor_telepon
         ]);
         return response()->json(['message'=>'berhasil registrasi'],201);
-      }
+    }
 
-      public function login(Request $request)
-      {
+    public function login(Request $request)
+    {
         $request->validate([ 
             'email'=>'required',
             'password'=>'required'
@@ -39,38 +44,37 @@ class authController extends Controller
         $user=User::where('email', $request->email)->first();
         if(!$user || !Hash::check($request->password,$user->password)){
             return response()->json(['message'=>'UNAUTHORIZED'],401);
-      }
-      $token=$user->createToken('Auth-token')->plainTextToken;
-      return response()->json([
-        'user'=>$user,
-        'token'=>$token
-      ],200);
-  }
+        }
+        $token=$user->createToken('Auth-token')->plainTextToken;
+        return response()->json([
+            'user'=>$user,
+            'token'=>$token
+        ],200);
+    }
 
-  public function delete(Request $request){
+    public function delete(Request $request){
 
-    $request->validate([
-        'id'=>'required|integer'
-    ]);
+        $request->validate([
+            'id'=>'required|integer'
+        ]);
 
-    $del = User::findOrFail($request->id);
+        $del = User::findOrFail($request->id);
 
-    $del->delete();
-    return response()->json(['message'=>'BERHASIL MENGHAPUS AKUN'],201);
-  }
+        $del->delete();
+        return response()->json(['message'=>'BERHASIL MENGHAPUS AKUN'],201);
+    }
 
-  public function update(Request $request)
-  {
-    $request->validate([
-        'id'=>'required|integer',
-        'name'=>'string',
-        'email'=>'email|unique:users,email,' . $request->id,
-        'password'=>'string',
-        'nomor_telepon'=>'string|unique:users,nomor_telepon,' . $request->id,
-        
-    ]);
+    public function update(Request $request)
+    {
+        $request->validate([
+            'name'=>'string',
+            'email'=>'email|unique:users,email,' . $request->id,
+            'password'=>'string',
+            'nomor_telepon'=>'string|unique:users,nomor_telepon,' . $request->id,
+            
+        ]);
 
-    $users = User::findOrFail($request->id);
+        $users = Auth::user();
 
         $users->name = $request->name;
         $users->email = $request->email;
@@ -84,46 +88,18 @@ class authController extends Controller
         $users->save();
 
         return response()->json('DATA BERHASIL DIPERBARUI!');
-  }
-
-  public function user()
-  {
-    return response()->json('SELAMAT DATANG DI F!ND, '.Auth()->User()-> name);
-  }
-  public function logout(Request $request)
-  {
-    $request->user()->currentAccessToken()->delete();
-    return response()->json('ANDA TELAH BERHASIL LOGOUT! SAMPAI JUMPA KEMBALI :)');
-  }
-
-  public function store(Request $request)
-    {
-        $request->validate([
-            'community_id' => 'required',
-            'owner_id' => 'required',
-            'gambar' => 'nullable',
-            'koordinat' => 'required',
-            'description' => 'required',
-            'anggota' => 'nullable',
-            'capacity' => 'required',
-        ]);
-        Communitie::create([
-            'community_id'=>$request->community_id,
-            'owner_id'=>$request->owner_id,
-            'gambar'=>$request->gambar,
-            'koordinat'=>$request->koordinat,
-            'description'=>$request->description,
-            'anggota' =>$request->anggota,
-            'capacity'=>$request->capacity
-        ]);
-        return response()->json(['message'=>'BBERHASIL REGISTRASI!'], 201);
     }
 
-    // Menampilkan detail komunitas tertentu
-    public function show($id)
+    public function user()
     {
-        return Community::findOrFail($id);
+        return response()->json('SELAMAT DATANG DI F!ND, '.Auth()->User()-> name);
     }
+    public function logout(Request $request)
+    {
+        $request->user()->currentAccessToken()->delete();
+        return response()->json('ANDA TELAH BERHASIL LOGOUT! SAMPAI JUMPA KEMBALI :)');
+    }
+
 
     public function tampilkan($id)
     {
