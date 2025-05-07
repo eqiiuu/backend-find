@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Communitie extends Model
 {
@@ -15,6 +16,7 @@ class Communitie extends Model
 
     // Kolom yang bisa diisi
     protected $fillable = [
+        'name',
         'community_id',
         'owner_id',
         'gambar',

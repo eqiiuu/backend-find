@@ -10,7 +10,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Product; 
 use App\Models\Post;
 use App\Models\comments;
-
+use App\Models\Admins;
+use Illuminate\Support\Facades\Auth;
 class authController extends Controller
 {
     public function register(Request $request)
@@ -50,6 +51,60 @@ class authController extends Controller
             'user'=>$user,
             'token'=>$token
         ],200);
+    }
+
+    public function adminLogin(Request $request)
+    {
+        try {
+        $form = [
+            'username' => $request->username,
+            'password' => $request->password
+        ];
+
+            $credentials = $request->validate([
+                'username' => 'required',
+                'password' => 'required'
+            ]);
+
+            \Log::info('Login attempt', [
+                'username' => $credentials['username'],
+                'has_password' => !empty($credentials['password'])
+            ]);
+
+            // Check if admin exists
+            $admin = \App\Models\Admins::where('username', $credentials['username'])->first();
+            if (!$admin) {
+                \Log::warning('Admin not found', ['username' => $credentials['username']]);
+                return redirect()->route('admin.login')->with('error', 'Invalid credentials');
+            }
+
+            \Log::info('Admin found', ['admin_id' => $admin->user_id]);
+
+            // Attempt authentication
+            if (Auth::guard('admin')->attempt($credentials)) {
+                \Log::info('Login successful', ['admin_id' => $admin->user_id]);
+                
+                $request->session()->regenerate();
+                return redirect()->route('admin.dashboard')->with('success', 'Login successful');
+            }
+
+            \Log::warning('Login failed - invalid password', ['admin_id' => $admin->user_id]);
+            return redirect()->route('admin.login')->with('error', 'Invalid credentials');
+        } catch (\Exception $e) {
+            \Log::error('Login error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('admin.login')->with('error', 'An error occurred during login');
+        }
+    }
+    
+    public function showLoginForm()
+    {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return view('login');
     }
 
     public function delete(Request $request){
@@ -101,6 +156,7 @@ class authController extends Controller
     }
 
 
+    // Fungsi untuk percobaan saja
     public function tampilkan($id)
     {
         $user = User::findOrFail($id);
@@ -111,6 +167,7 @@ class authController extends Controller
         ]);
     }
 
+      // Fungsi untuk percobaan saja
     public function image(Request $request)
     {
         $validated = $request->validate([
@@ -134,21 +191,6 @@ class authController extends Controller
         ]);
 
         return response()->json(['message' => 'BERHASIL MENAMBAHKAN GAMBAR!']);
-    }
-
-    // Mengupdate komunitas tertentu
-    public function perbarui(Request $request, $id)
-    {
-        $community = Communitie::findOrFail($id);
-        $community->update($request->all());
-        return response()->json($community);
-    }
-
-    // Menghapus komunitas
-    public function destroy($id)
-    {
-        Community::destroy($id);
-        return response()->json(['message' => 'KOMUNITAS BERHASIL DIHAPUS']);
     }
 
 }

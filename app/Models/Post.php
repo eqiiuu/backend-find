@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Models\Communitie;
 
 class Post extends Model
 {
@@ -58,7 +59,7 @@ class Post extends Model
     // Relasi ke komunitas
     public function community()
     {
-        return $this->belongsTo(Community::class, 'community_id', 'community_id');
+        return $this->belongsTo(Communitie::class, 'community_id', 'community_id');
     }
 
     

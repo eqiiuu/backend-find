@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\adminController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,4 +16,39 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+Route::get('/register', [adminController::class, 'showRegister'])->name('register');
+Route::post('/admin/register', [adminController::class, 'registerPost'])->name('admin.register.post');
+
+Route::get('/login', [adminController::class, 'showLogin'])->name('login');
+Route::post('/admin/login', [adminController::class, 'loginPost'])->name('admin.login.post');
+
+Route::middleware(['auth:admin'])->group(function () {
+    Route::get('/dashboard', [adminController::class, 'showDashboard'])->name('admin.dashboard');
+    Route::post('/admin/logout', [adminController::class, 'logout'])->name('admin.logout');
+
+    // User Management Routes
+    Route::get('/admin/users', [adminController::class, 'showUsers'])->name('admin.users.index');
+    Route::get('/admin/users/create', [adminController::class, 'createUser'])->name('admin.users.create');
+    Route::post('/admin/users', [adminController::class, 'storeUser'])->name('admin.users.store');
+    Route::get('/admin/users/{id}/edit', [adminController::class, 'editUser'])->name('admin.users.edit');
+    Route::put('/admin/users/{id}', [adminController::class, 'updateUser'])->name('admin.users.update');
+    Route::delete('/admin/users/{id}', [adminController::class, 'deleteUser'])->name('admin.users.delete');
+
+    // Community Management Routes
+    Route::get('/admin/communities', [adminController::class, 'showCommunities'])->name('admin.communities.index');
+    Route::get('/admin/communities/create', [adminController::class, 'createCommunity'])->name('admin.communities.create');
+    Route::post('/admin/communities', [adminController::class, 'storeCommunity'])->name('admin.communities.store');
+    Route::get('/admin/communities/{id}/edit', [adminController::class, 'editCommunity'])->name('admin.communities.edit');
+    Route::put('/admin/communities/{id}', [adminController::class, 'updateCommunity'])->name('admin.communities.update');
+    Route::delete('/admin/communities/{id}', [adminController::class, 'deleteCommunity'])->name('admin.communities.delete');
+
+    // Post Management Routes
+    Route::get('/admin/posts', [adminController::class, 'showPosts'])->name('admin.posts.index');
+    Route::get('/admin/posts/create', [adminController::class, 'createPost'])->name('admin.posts.create');
+    Route::post('/admin/posts', [adminController::class, 'storePost'])->name('admin.posts.store');
+    Route::get('/admin/posts/{id}/edit', [adminController::class, 'editPost'])->name('admin.posts.edit');
+    Route::put('/admin/posts/{id}', [adminController::class, 'updatePost'])->name('admin.posts.update');
+    Route::delete('/admin/posts/{id}', [adminController::class, 'deletePost'])->name('admin.posts.delete');
 });

@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('communities', function (Blueprint $table) {
             $table->string('community_id')->primary();
+            $table->string('name');
             $table->string('owner_id'); // relasi ke users.user_id
             $table->string('gambar')->nullable(); // path ke gambar
             $table->decimal('latitude', 10, 8);
