@@ -24,7 +24,8 @@ class Communitie extends Model
         'longitude',
         'description',
         'anggota',
-        'capacity'
+        'capacity',
+        'isMemberPostable'
     ];
 
     // Tipe data otomatis
@@ -32,6 +33,7 @@ class Communitie extends Model
         'anggota' => 'array',
         'latitude' => 'float',
         'longitude' => 'float',
+        'isMemberPostable' => 'boolean'
     ];
 
     // (Opsional) Relasi ke model User

@@ -20,6 +20,7 @@ class ChatController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'capacity' => 'required|integer|min:2',
+            'is_private' => 'nullable|boolean',
             'user_ids' => 'required|array',
             'user_ids.*' => 'exists:users,user_id'
         ]);
@@ -30,7 +31,8 @@ class ChatController extends Controller
 
         $group = ChatGroup::create([
             'name' => $request->name,
-            'capacity' => $request->capacity
+            'capacity' => $request->capacity,
+            'is_private' => $request->is_private ?? false
         ]);
 
         // Add the creator to the group
@@ -102,7 +104,22 @@ class ChatController extends Controller
             ->with(['users', 'messages' => function($query) {
                 $query->latest()->take(1);
             }])
-            ->get();
+            ->get()
+            ->map(function ($group) {
+                if ($group->is_private) {
+                    // Get the other member's name for private groups
+                    $otherMember = $group->users()
+                        ->where('users.user_id', '!=', Auth::id())
+                        ->first();
+                    
+                    if ($otherMember) {
+                        $group->display_name = $otherMember->name;
+                    }
+                } else {
+                    $group->display_name = $group->name;
+                }
+                return $group;
+            });
 
         return response()->json($groups);
     }

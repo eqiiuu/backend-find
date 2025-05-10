@@ -12,26 +12,45 @@ return new class extends Migration
     public function up()
     {
         Schema::create('chat_groups', function (Blueprint $table) {
-            $table->id();
+            $table->string('chat_group_id')->primary();
             $table->string('name');
             $table->integer('capacity');
+            $table->boolean('is_private');
             $table->timestamps();
         });
         
         Schema::create('chat_group_user', function (Blueprint $table) {
-            $table->foreignId('chat_group_id')->constrained();
+            $table->string('chat_group_id');
             $table->string('user_id');
-            $table->foreign('user_id')->references('user_id')->on('users');
             $table->timestamps();
+
+            $table->foreign('chat_group_id')
+                  ->references('chat_group_id')
+                  ->on('chat_groups')
+                  ->onDelete('cascade');
+                  
+            $table->foreign('user_id')
+                  ->references('user_id')
+                  ->on('users')
+                  ->onDelete('cascade');
         });
         
         Schema::create('messages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('chat_group_id')->constrained();
+            $table->string('message_id')->primary();
+            $table->string('chat_group_id');
             $table->string('user_id');
-            $table->foreign('user_id')->references('user_id')->on('users');
             $table->text('message');
             $table->timestamps();
+
+            $table->foreign('chat_group_id')
+                  ->references('chat_group_id')
+                  ->on('chat_groups')
+                  ->onDelete('cascade');
+                  
+            $table->foreign('user_id')
+                  ->references('user_id')
+                  ->on('users')
+                  ->onDelete('cascade');
         });
     }
     /**

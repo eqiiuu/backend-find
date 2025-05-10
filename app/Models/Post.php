@@ -19,8 +19,7 @@ class Post extends Model
         'image',
         'description',
         'community_id',
-        'post_date',
-        'comments'
+        'post_date'
     ];
 
     protected $attributes = [
@@ -29,7 +28,6 @@ class Post extends Model
 
     protected $casts = [
         'post_date' => 'date',
-        'comments' => 'array',
         'image' => 'string',
     ];
 

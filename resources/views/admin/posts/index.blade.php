@@ -55,67 +55,115 @@
                                     </button>
                                 </form>
                             </div>
-
-                            <!-- Edit Post Modal -->
-                            <div class="modal fade" id="editPostModal{{ $post->post_id }}" tabindex="-1" aria-labelledby="editPostModalLabel{{ $post->post_id }}" aria-hidden="true">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="editPostModalLabel{{ $post->post_id }}">Edit Post</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <form action="{{ route('admin.posts.update', $post->post_id) }}" method="POST" enctype="multipart/form-data">
-                                            @csrf
-                                            @method('PUT')
-                                            <div class="modal-body">
-                                                <div class="row">
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label for="title" class="form-label">Title</label>
-                                                            <input type="text" class="form-control" id="title" name="title" value="{{ $post->title }}" required>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label for="description" class="form-label">Description</label>
-                                                            <textarea class="form-control" id="description" name="description" rows="3" required>{{ $post->description }}</textarea>
-                                                        </div>
-                                                        <div class="mb-3">
-                                                            <label for="community_id" class="form-label">Community</label>
-                                                            <select class="form-select" id="community_id" name="community_id" required>
-                                                                @foreach($communities as $community)
-                                                                    <option value="{{ $community->community_id }}" {{ $post->community_id == $community->community_id ? 'selected' : '' }}>
-                                                                        {{ $community->description }}
-                                                                    </option>
-                                                                @endforeach
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-md-6">
-                                                        <div class="mb-3">
-                                                            <label class="form-label">Current Image</label>
-                                                            @if($post->image)
-                                                                <div class="mb-2">
-                                                                    <img src="{{ asset($post->image) }}" alt="Current Image" class="img-fluid rounded">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="7" class="p-0">
+                            <div class="accordion" id="commentsAccordion{{ $post->post_id }}">
+                                <div class="accordion-item border-0">
+                                    <div class="accordion-header">
+                                        <button class="btn btn-link text-decoration-none w-100 text-start p-3" type="button" data-bs-toggle="collapse" data-bs-target="#commentsCollapse{{ $post->post_id }}" aria-expanded="false" aria-controls="commentsCollapse{{ $post->post_id }}">
+                                            <i class='bx bx-message-square-dots'></i> Comments ({{ $post->comments->count() }})
+                                        </button>
+                                    </div>
+                                    <div id="commentsCollapse{{ $post->post_id }}" class="accordion-collapse collapse" data-bs-parent="#commentsAccordion{{ $post->post_id }}">
+                                        <div class="accordion-body bg-light">
+                                            @if($post->comments->count() > 0)
+                                                @foreach($post->comments as $comment)
+                                                    <div class="comment mb-3">
+                                                        <div class="d-flex align-items-start">
+                                                            <div class="flex-grow-1">
+                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                    <h6 class="mb-1">{{ $comment->user->name }}</h6>
+                                                                    <small class="text-muted">{{ $comment->created_at->diffForHumans() }}</small>
                                                                 </div>
-                                                            @else
-                                                                <p class="text-muted">No image uploaded</p>
-                                                            @endif
-                                                            <label for="image" class="form-label">Change Image</label>
-                                                            <input type="file" class="form-control" id="image" name="image" accept="image/*">
-                                                            <small class="text-muted">Leave empty to keep current image</small>
+                                                                <p class="mb-1">{{ $comment->content }}</p>
+                                                                
+                                                                @if($comment->replies->count() > 0)
+                                                                    <div class="replies ms-4 mt-2">
+                                                                        @foreach($comment->replies as $reply)
+                                                                            <div class="reply mb-2">
+                                                                                <div class="d-flex justify-content-between align-items-center">
+                                                                                    <h6 class="mb-1">{{ $reply->user->name }}</h6>
+                                                                                    <small class="text-muted">{{ $reply->created_at->diffForHumans() }}</small>
+                                                                                </div>
+                                                                                <p class="mb-1">{{ $reply->content }}</p>
+                                                                            </div>
+                                                                        @endforeach
+                                                                    </div>
+                                                                @endif
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn btn-primary">Save Changes</button>
-                                            </div>
-                                        </form>
+                                                @endforeach
+                                            @else
+                                                <p class="text-muted mb-0">No comments yet.</p>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </td>
                     </tr>
+
+                    <!-- Edit Post Modal -->
+                    <div class="modal fade" id="editPostModal{{ $post->post_id }}" tabindex="-1" aria-labelledby="editPostModalLabel{{ $post->post_id }}" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="editPostModalLabel{{ $post->post_id }}">Edit Post</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <form action="{{ route('admin.posts.update', $post->post_id) }}" method="POST" enctype="multipart/form-data">
+                                    @csrf
+                                    @method('PUT')
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label for="title" class="form-label">Title</label>
+                                                    <input type="text" class="form-control" id="title" name="title" value="{{ $post->title }}" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="description" class="form-label">Description</label>
+                                                    <textarea class="form-control" id="description" name="description" rows="3" required>{{ $post->description }}</textarea>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="community_id" class="form-label">Community</label>
+                                                    <select class="form-select" id="community_id" name="community_id" required>
+                                                        @foreach($communities as $community)
+                                                            <option value="{{ $community->community_id }}" {{ $post->community_id == $community->community_id ? 'selected' : '' }}>
+                                                                {{ $community->description }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="mb-3">
+                                                    <label class="form-label">Current Image</label>
+                                                    @if($post->image)
+                                                        <div class="mb-2">
+                                                            <img src="{{ asset($post->image) }}" alt="Current Image" class="img-fluid rounded">
+                                                        </div>
+                                                    @else
+                                                        <p class="text-muted">No image uploaded</p>
+                                                    @endif
+                                                    <label for="image" class="form-label">Change Image</label>
+                                                    <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                                                    <small class="text-muted">Leave empty to keep current image</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                     @endforeach
                 </tbody>
             </table>
@@ -125,4 +173,24 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+<style>
+    .accordion-button:not(.collapsed) {
+        background-color: #f8f9fa;
+        color: #0d6efd;
+    }
+    .accordion-button:focus {
+        box-shadow: none;
+        border-color: rgba(0,0,0,.125);
+    }
+    .comment, .reply {
+        padding: 0.5rem;
+        border-radius: 0.25rem;
+    }
+    .comment:hover, .reply:hover {
+        background-color: rgba(0,0,0,.03);
+    }
+</style>
+@endpush
 @endsection 

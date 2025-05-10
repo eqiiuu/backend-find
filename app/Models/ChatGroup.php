@@ -4,14 +4,25 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class ChatGroup extends Model
 {
     use HasFactory;
     
+    protected $primaryKey = 'chat_group_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
     protected $fillable = [
+        'chat_group_id',
         'name',
-        'capacity'
+        'capacity',
+        'is_private'
+    ];
+
+    protected $casts = [
+        'is_private' => 'boolean',
     ];
 
     // Many-to-many relationship with users
@@ -48,5 +59,16 @@ class ChatGroup extends Model
     {
         $this->users()->detach($user_id);
         return true;
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->chat_group_id)) {
+                $model->chat_group_id = 'chat_' . Str::random(8);
+            }
+        });
     }
 }

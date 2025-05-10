@@ -30,6 +30,20 @@
             </div>
 
             <div class="mb-3">
+                <label for="password" class="form-label">New Password</label>
+                <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password">
+                <small class="text-muted">Leave blank to keep current password</small>
+                @error('password')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-3">
+                <label for="password_confirmation" class="form-label">Confirm New Password</label>
+                <input type="password" class="form-control" id="password_confirmation" name="password_confirmation">
+            </div>
+
+            <div class="mb-3">
                 <label for="nomor_telepon" class="form-label">Phone Number</label>
                 <input type="text" class="form-control @error('nomor_telepon') is-invalid @enderror" id="nomor_telepon" name="nomor_telepon" value="{{ old('nomor_telepon', $user->nomor_telepon) }}">
                 @error('nomor_telepon')

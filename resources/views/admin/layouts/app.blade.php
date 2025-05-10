@@ -80,6 +80,11 @@
                             <i class='bx bxs-message-square-dots'></i> Posts
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.chats.*') ? 'active' : '' }}" href="{{ route('admin.chats.index') }}">
+                            <i class='bx bxs-chat'></i> Chat Groups
+                        </a>
+                    </li>
                     <li class="nav-item mt-3">
                         <form action="{{ route('admin.logout') }}" method="POST" class="d-inline w-100">
                             @csrf

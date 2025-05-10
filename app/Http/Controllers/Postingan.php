@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\comments;
+use App\Models\Communitie;
 
 class Postingan extends Controller
 {
@@ -24,6 +25,17 @@ class Postingan extends Controller
             'user_id' => 'required',
         ]);
 
+        // Get the community and check permissions
+        $community = Communitie::findOrFail($request->community_id);
+        $user_id = auth()->user()->user_id;
+
+        // Check if user is the owner or if members are allowed to post
+        if ($community->owner_id !== $user_id && !$community->isMemberPostable) {
+            return response()->json([
+                'error' => 'You are not allowed to post in this community. Only the owner can post.'
+            ], 403);
+        }
+
         $imagePath = null;
 
         if ($request->hasFile('image')) {
@@ -34,12 +46,11 @@ class Postingan extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'image' => $imagePath,
-            'user_id' => $request->user_id,
+            'user_id' => $user_id,
             'community_id' => $request->community_id,
             'post_date' => now(),
-            'comments' => [],
+            'comments' => []
         ]);
-        
         
         return response()->json(['message' => 'BERHASIL MENAMBAHKAN POST!']);
     }
@@ -59,6 +70,12 @@ class Postingan extends Controller
             'parent_id' => $request->parent_id,
             'content' => $request->content
         ]);
+
+        // Update the post's comments array with the new comment ID
+        $post = Post::findOrFail($request->post_id);
+        $comments = $post->comments ?? [];
+        $comments[] = $comment->comment_id;
+        $post->update(['comments' => $comments]);
 
         return response()->json([
             'message' => 'Comment added successfully',
@@ -85,6 +102,12 @@ class Postingan extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Remove comment ID from post's comments array
+        $post = Post::findOrFail($comment->post_id);
+        $comments = $post->comments ?? [];
+        $comments = array_diff($comments, [$comment_id]);
+        $post->update(['comments' => array_values($comments)]);
+
         $comment->delete();
         return response()->json(['message' => 'Comment deleted successfully']);
     }
@@ -105,5 +128,23 @@ class Postingan extends Controller
     {
         Post::destroy($id);
         return response()->json(['message' => 'Post deleted']);
+    }
+
+    public function getUserCommunityPosts()
+    {
+        $user_id = auth()->user()->user_id;
+        
+        // Get all communities where user is a member (either as owner or in anggota array)
+        $posts = Post::whereHas('community', function($query) use ($user_id) {
+            $query->where('owner_id', $user_id)
+                  ->orWhereJsonContains('anggota', $user_id);
+        })
+        ->with(['user', 'community', 'comments' => function($query) {
+            $query->with('user');
+        }])
+        ->latest('post_date')
+        ->paginate(10);
+
+        return response()->json($posts);
     }
 }

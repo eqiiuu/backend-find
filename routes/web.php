@@ -35,6 +35,7 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::get('/admin/users/{id}/edit', [adminController::class, 'editUser'])->name('admin.users.edit');
     Route::put('/admin/users/{id}', [adminController::class, 'updateUser'])->name('admin.users.update');
     Route::delete('/admin/users/{id}', [adminController::class, 'deleteUser'])->name('admin.users.delete');
+    Route::post('/admin/users/{id}/reset-password', [adminController::class, 'resetPassword'])->name('admin.users.reset-password');
 
     // Community Management Routes
     Route::get('/admin/communities', [adminController::class, 'showCommunities'])->name('admin.communities.index');
@@ -51,4 +52,12 @@ Route::middleware(['auth:admin'])->group(function () {
     Route::get('/admin/posts/{id}/edit', [adminController::class, 'editPost'])->name('admin.posts.edit');
     Route::put('/admin/posts/{id}', [adminController::class, 'updatePost'])->name('admin.posts.update');
     Route::delete('/admin/posts/{id}', [adminController::class, 'deletePost'])->name('admin.posts.delete');
+
+    // Chat Group Management Routes
+    Route::get('/admin/chats', [adminController::class, 'showChats'])->name('admin.chats.index');
+    Route::get('/admin/chats/create', [adminController::class, 'createChat'])->name('admin.chats.create');
+    Route::post('/admin/chats', [adminController::class, 'storeChat'])->name('admin.chats.store');
+    Route::get('/admin/chats/{id}/edit', [adminController::class, 'editChat'])->name('admin.chats.edit');
+    Route::put('/admin/chats/{id}', [adminController::class, 'updateChat'])->name('admin.chats.update');
+    Route::delete('/admin/chats/{id}', [adminController::class, 'deleteChat'])->name('admin.chats.delete');
 });

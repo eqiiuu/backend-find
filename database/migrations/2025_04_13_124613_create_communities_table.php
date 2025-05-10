@@ -21,6 +21,7 @@ return new class extends Migration
             $table->text('description');
             $table->json('anggota')->nullable(); // array of user_id
             $table->string('post_id')->nullable();
+            $table->boolean('isMemberPostable')->default(false);
             $table->integer('capacity');
             $table->timestamps();
         });

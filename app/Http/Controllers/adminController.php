@@ -10,6 +10,8 @@ use App\Models\Communitie;
 use App\Models\Messages;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use App\Models\ChatGroup;
 
 class adminController extends Controller
 {
@@ -72,11 +74,16 @@ class adminController extends Controller
             'total_users' => User::count(),
             'total_posts' => Post::count(),
             'total_communities' => Communitie::count(),
+            'total_chats' => ChatGroup::count(),
             'recent_posts' => Post::select('post_id', 'title', 'user_id', 'community_id', 'post_date')
                 ->latest()
                 ->take(5)
                 ->get(),
             'recent_communities' => Communitie::select('community_id', 'owner_id', 'description', 'capacity')
+                ->latest()
+                ->take(5)
+                ->get(),
+            'recent_chats' => ChatGroup::with('users')
                 ->latest()
                 ->take(5)
                 ->get()
@@ -104,6 +111,7 @@ class adminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id . ',user_id',
+            'password' => 'nullable|string|min:6|confirmed',
             'nomor_telepon' => 'nullable|string|max:20'
         ]);
 
@@ -111,6 +119,11 @@ class adminController extends Controller
         $changes = array_filter($request->only(['name', 'email', 'nomor_telepon']), function($value, $key) use ($user) {
             return $value !== $user->$key;
         }, ARRAY_FILTER_USE_BOTH);
+
+        // Handle password update if provided
+        if ($request->filled('password')) {
+            $changes['password'] = Hash::make($request->password);
+        }
 
         if (!empty($changes)) {
             $user->update($changes);
@@ -218,7 +231,7 @@ class adminController extends Controller
 
     public function showPosts()
     {
-        $posts = Post::with(['user', 'community'])->latest()->paginate(10);
+        $posts = Post::with(['user', 'community', 'comments.user', 'comments.replies.user'])->latest()->paginate(10);
         $communities = Communitie::all();
         return view('admin.posts.index', compact('posts', 'communities'));
     }
@@ -284,12 +297,13 @@ class adminController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
+            'password' => 'required|string|min:6|confirmed',
             'nomor_telepon' => 'nullable|string|max:20'
         ]);
 
         $user = new User();
         $user->name = $request->name;
+        $user->username = $request->name;
         $user->email = $request->email;
         $user->password = Hash::make($request->password);
         $user->nomor_telepon = $request->nomor_telepon;
@@ -376,5 +390,114 @@ class adminController extends Controller
         $post->save();
 
         return redirect()->route('admin.posts.index')->with('success', 'Post created successfully');
+    }
+
+    public function resetPassword($id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Generate a random password
+        $newPassword = Str::random(8);
+        
+        // Update the user's password using the same approach as updateUser
+        $changes = [
+            'password' => Hash::make($newPassword)
+        ];
+        
+        $user->update($changes);
+
+        // Store the new password in session for dashboard display
+        session(['last_reset_password' => [
+            'user_name' => $user->name,
+            'password' => $newPassword,
+            'timestamp' => now()
+        ]]);
+
+        return redirect()
+            ->route('admin.users.index')
+            ->with('success', "Password for {$user->name} has been reset to: {$newPassword}");
+    }
+
+    public function showChats()
+    {
+        $chatGroups = ChatGroup::with('users')->latest()->paginate(10);
+        return view('admin.chats.index', compact('chatGroups'));
+    }
+
+    public function createChat()
+    {
+        $users = User::all();
+        return view('admin.chats.create', compact('users'));
+    }
+
+    public function storeChat(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:2',
+            'is_private' => 'nullable|boolean',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,user_id'
+        ]);
+
+        // Create the chat group first
+        $group = new ChatGroup();
+        $group->chat_group_id = 'chat_' . Str::random(8); // Explicitly set the chat_group_id
+        $group->name = $request->name;
+        $group->capacity = $request->capacity;
+        $group->is_private = $request->boolean('is_private');
+        $group->save();
+
+        // After the group is created, add all users at once
+        if ($request->has('user_ids')) {
+            $group->users()->attach($request->user_ids);
+        }
+
+        return redirect()
+            ->route('admin.chats.index')
+            ->with('success', 'Chat group created successfully');
+    }
+
+    public function editChat($id)
+    {
+        $chatGroup = ChatGroup::with('users')->findOrFail($id);
+        $users = User::all();
+        return view('admin.chats.edit', compact('chatGroup', 'users'));
+    }
+
+    public function updateChat(Request $request, $id)
+    {
+        $group = ChatGroup::findOrFail($id);
+        
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'capacity' => 'required|integer|min:2',
+            'is_private' => 'nullable|boolean',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,user_id'
+        ]);
+
+        // Update basic info
+        $group->update([
+            'name' => $request->name,
+            'capacity' => $request->capacity,
+            'is_private' => $request->boolean('is_private')
+        ]);
+
+        // Sync users (this will remove users not in the new list and add new ones)
+        $group->users()->sync($request->user_ids);
+
+        return redirect()
+            ->route('admin.chats.index')
+            ->with('success', 'Chat group updated successfully');
+    }
+
+    public function deleteChat($id)
+    {
+        $group = ChatGroup::findOrFail($id);
+        $group->delete();
+        return redirect()
+            ->route('admin.chats.index')
+            ->with('success', 'Chat group deleted successfully');
     }
 }
