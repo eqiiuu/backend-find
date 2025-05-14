@@ -21,6 +21,12 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/logout',[authController::class,'logout']);
     Route::post('/update',[authController::class,'update']);
     
+    // Posts routes
+    Route::get('/posts', [Postingan::class, 'index']);
+    Route::post('/post',[Postingan::class,'post']);
+    Route::get('/user/community-posts', [Postingan::class, 'getUserCommunityPosts']);
+    Route::get('/posts/{post_id}', [Postingan::class, 'show']);
+    
     // Comment routes
     Route::post('/comments', [Postingan::class, 'addComment']);
     Route::get('/posts/{post_id}/comments', [Postingan::class, 'getComments']);
@@ -34,7 +40,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/chat/groups/{group}/users', [ChatController::class, 'addUserToGroup']);
     Route::delete('/chat/groups/{group}/users', [ChatController::class, 'removeUserFromGroup']);
 
-    // Post routes
-    Route::post('/post',[Postingan::class,'post']);
-    Route::get('/user/community-posts', [Postingan::class, 'getUserCommunityPosts']);
+    // Community routes
+    Route::get('/communities', [Komunitas::class, 'index']);
+    Route::get('/communities/{id}', [Komunitas::class, 'show']);
+    Route::post('/communities', [Komunitas::class, 'createCommunity']);
+    Route::put('/communities/{id}', [Komunitas::class, 'update']);
+    Route::delete('/communities/{id}', [Komunitas::class, 'destroy']);
 });

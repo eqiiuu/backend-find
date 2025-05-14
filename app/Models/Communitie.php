@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Communitie extends Model
 {
+    use HasFactory;
 
     protected $table = 'communities';
     // Jika primary key kamu bukan "id"
@@ -36,6 +38,8 @@ class Communitie extends Model
         'isMemberPostable' => 'boolean'
     ];
 
+    protected $appends = ['gambar_url'];
+
     // (Opsional) Relasi ke model User
     public function owner()
     {
@@ -57,5 +61,29 @@ class Communitie extends Model
                 $model->community_id = 'community_' . Str::random(10);
             }
         });
+    }
+
+    public function getGambarUrlAttribute()
+    {
+        if ($this->gambar) {
+            // If it's already a full URL, return it
+            if (filter_var($this->gambar, FILTER_VALIDATE_URL)) {
+                return $this->gambar;
+            }
+
+            // Remove any 'public/' or 'storage/' prefix
+            $path = str_replace(['public/', 'storage/'], '', $this->gambar);
+            
+            // Make sure we use the correct path (communities, not community)
+            if (!str_starts_with($path, 'images/communities/')) {
+                $path = 'images/communities/' . basename($path);
+            }
+            
+            // Log the final path for debugging
+            \Log::info('Community image path in model: ' . $path);
+            
+            return url('storage/' . $path);
+        }
+        return null;
     }
 }

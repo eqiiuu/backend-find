@@ -117,32 +117,185 @@ class authController extends Controller
 
         $del->delete();
         return response()->json(['message'=>'BERHASIL MENGHAPUS AKUN'],201);
-    }
-
+    }    
     public function update(Request $request)
     {
-        $request->validate([
-            'name'=>'string',
-            'email'=>'email|unique:users,email,' . $request->id,
-            'password'=>'string',
-            'nomor_telepon'=>'string|unique:users,nomor_telepon,' . $request->id,
+        try {
+            \Log::info('Update profile request received', ['request' => $request->all()]);
             
-        ]);
+            // Validate request
+            $request->validate([
+                'name' => 'nullable|string|max:255',
+                'email' => 'nullable|email|unique:users,email,' . auth()->user()->user_id . ',user_id',
+                'password' => 'nullable|string|min:6',
+                'nomor_telepon' => 'nullable|string|unique:users,nomor_telepon,' . auth()->user()->user_id . ',user_id',
+                'lokasi' => 'nullable|string|max:255',
+                'tentang' => 'nullable|string',
+                'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120',
+                'background' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120'
+            ]);
 
-        $users = Auth::user();
+            $user = Auth::user();
+            if (!$user) {
+                throw new \Exception('User not authenticated');
+            }
 
-        $users->name = $request->name;
-        $users->email = $request->email;
-        if ($request->filled('password')) {
-            $users->password = Hash::make($request->password);
+            \Log::info('User found', ['user_id' => $user->user_id]);
+
+            // Update basic fields if they exist in the request
+            $fieldsToUpdate = ['name', 'email', 'nomor_telepon', 'lokasi', 'tentang'];
+            foreach ($fieldsToUpdate as $field) {
+                if ($request->has($field) && !is_null($request->input($field))) {
+                    $user->$field = $request->input($field);
+                }
+            }
+            
+            // Handle password separately
+            if ($request->filled('password')) {
+                $user->password = Hash::make($request->password);
+            }
+
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                try {
+                    $photo = $request->file('photo');
+                    if (!$photo->isValid()) {
+                        throw new \Exception('Invalid photo file uploaded');
+                    }
+
+                    \Log::info('Handling photo upload', [
+                        'original_name' => $photo->getClientOriginalName(),
+                        'mime_type' => $photo->getMimeType(),
+                        'size' => $photo->getSize()
+                    ]);
+
+                    // Delete old photo if exists
+                    if ($user->photo) {
+                        try {
+                            $oldPath = str_replace('/storage/', '', $user->photo);
+                            if (Storage::disk('public')->exists($oldPath)) {
+                                Storage::disk('public')->delete($oldPath);
+                                \Log::info('Old photo deleted', ['path' => $oldPath]);
+                            } else {
+                                // Coba hapus dengan path absolut jika path relatif tidak berhasil
+                                $absolutePath = storage_path('app/public/' . $oldPath);
+                                if (file_exists($absolutePath)) {
+                                    unlink($absolutePath);
+                                    \Log::info('Old photo deleted using absolute path', ['path' => $absolutePath]);
+                                } else {
+                                    \Log::warning('Old photo not found', ['relative_path' => $oldPath, 'absolute_path' => $absolutePath]);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            \Log::warning('Failed to delete old photo', [
+                                'error' => $e->getMessage(),
+                                'path' => $oldPath ?? null
+                            ]);
+                        }
+                    }
+
+                    // Store new photo
+                    $fileName = 'profile_' . time() . '.' . $photo->getClientOriginalExtension();
+                    $photoPath = $photo->storeAs('profile_photos', $fileName, 'public');
+                    if (!$photoPath) {
+                        throw new \Exception('Failed to store photo file');
+                    }
+                    $user->photo = '/storage/' . $photoPath;
+                    \Log::info('Photo stored successfully', ['path' => $photoPath]);
+                } catch (\Exception $e) {
+                    \Log::error('Error handling photo upload', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw new \Exception('Error uploading photo: ' . $e->getMessage());
+                }
+            }
+
+            // Handle background upload
+            if ($request->hasFile('background')) {
+                try {
+                    $background = $request->file('background');
+                    if (!$background->isValid()) {
+                        throw new \Exception('Invalid background file uploaded');
+                    }
+
+                    \Log::info('Handling background upload', [
+                        'original_name' => $background->getClientOriginalName(),
+                        'mime_type' => $background->getMimeType(),
+                        'size' => $background->getSize()
+                    ]);
+
+                    // Delete old background if exists
+                    if ($user->background) {
+                        try {
+                            $oldPath = str_replace('/storage/', '', $user->background);
+                            if (Storage::disk('public')->exists($oldPath)) {
+                                Storage::disk('public')->delete($oldPath);
+                                \Log::info('Old background deleted', ['path' => $oldPath]);
+                            } else {
+                                // Coba hapus dengan path absolut jika path relatif tidak berhasil
+                                $absolutePath = storage_path('app/public/' . $oldPath);
+                                if (file_exists($absolutePath)) {
+                                    unlink($absolutePath);
+                                    \Log::info('Old background deleted using absolute path', ['path' => $absolutePath]);
+                                } else {
+                                    \Log::warning('Old background not found', ['relative_path' => $oldPath, 'absolute_path' => $absolutePath]);
+                                }
+                            }
+                        } catch (\Exception $e) {
+                            \Log::warning('Failed to delete old background', [
+                                'error' => $e->getMessage(),
+                                'path' => $oldPath ?? null
+                            ]);
+                        }
+                    }
+
+                    // Store new background
+                    $fileName = 'background_' . time() . '.' . $background->getClientOriginalExtension();
+                    $backgroundPath = $background->storeAs('profile_backgrounds', $fileName, 'public');
+                    if (!$backgroundPath) {
+                        throw new \Exception('Failed to store background file');
+                    }
+                    $user->background = '/storage/' . $backgroundPath;
+                    \Log::info('Background stored successfully', ['path' => $backgroundPath]);
+                } catch (\Exception $e) {
+                    \Log::error('Error handling background upload', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    throw new \Exception('Error uploading background: ' . $e->getMessage());
+                }
+            }
+
+            if (!$user->save()) {
+                throw new \Exception('Failed to save user data');
+            }
+
+            \Log::info('Profile updated successfully', ['user_id' => $user->user_id]);
+
+            return response()->json([
+                'message' => 'DATA BERHASIL DIPERBARUI!',
+                'user' => $user
+            ], 200);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation error during profile update', [
+                'errors' => $e->errors()
+            ]);
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Profile update error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Gagal memperbarui profil',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        if ($request->filled('nomor_telepon')) {
-            $users->nomor_telepon = Hash::make($request->nomor_telepon);
-        }
-
-        $users->save();
-
-        return response()->json('DATA BERHASIL DIPERBARUI!');
     }
 
     public function user()
@@ -164,6 +317,10 @@ class authController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'nomor_telepon' => $user->nomor_telepon,
+            'photo' => $user->photo,
+            'background' => $user->background,
+            'lokasi' => $user->lokasi,
+            'tentang' => $user->tentang
         ]);
     }
 
@@ -194,4 +351,3 @@ class authController extends Controller
     }
 
 }
-

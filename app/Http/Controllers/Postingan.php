@@ -11,7 +11,12 @@ class Postingan extends Controller
 {
     public function index()
     {
-        return Post::all();
+        // Get all posts with community and user information
+        $posts = Post::with(['community', 'user'])
+                    ->orderBy('created_at', 'desc')
+                    ->get();
+        
+        return response()->json($posts);
     }
 
     

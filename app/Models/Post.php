@@ -31,6 +31,8 @@ class Post extends Model
         'image' => 'string',
     ];
 
+    protected $appends = ['image_url'];
+
     protected static function boot()
     {
         parent::boot();
@@ -60,5 +62,11 @@ class Post extends Model
         return $this->belongsTo(Communitie::class, 'community_id', 'community_id');
     }
 
-    
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return url('storage/' . $this->image);
+        }
+        return null;
+    }
 }

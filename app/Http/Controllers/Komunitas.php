@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Community;
+use App\Models\Communitie;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 
@@ -12,7 +12,7 @@ class Komunitas extends Controller
     // Menampilkan semua komunitas
     public function index()
     {
-        return Community::all();
+        return Communitie::all();
     }
 
     public function createCommunity(Request $request)
@@ -29,33 +29,47 @@ class Komunitas extends Controller
 
         $imagePath = null;
 
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('images/community', 'public');
+        if ($request->hasFile('gambar')) {
+            // Store in images/communities folder
+            $imagePath = $request->file('gambar')->store('images/communities', 'public');
+            \Log::info('Stored community image at: ' . $imagePath);
         }
 
-        Communitie::create([
+        $community = Communitie::create([
             'owner_id' => Auth::user()->user_id,
             'name' => $request->name,
             'gambar' => $imagePath,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'description' => $request->description,
-            'anggota' => $request->anggota,
+            'anggota' => $request->anggota ?? [],
             'capacity' => $request->capacity
         ]);
-        return response()->json(['message'=>'BERHASIL REGISTRASI!'], 201);
+
+        // Log the created community data for debugging
+        \Log::info('Created community:', [
+            'id' => $community->community_id,
+            'name' => $community->name,
+            'image_path' => $community->gambar,
+            'image_url' => $community->gambar_url
+        ]);
+
+        return response()->json([
+            'message' => 'BERHASIL REGISTRASI!',
+            'community' => $community
+        ], 201);
     }
 
     // Menampilkan detail komunitas tertentu
     public function show($id)
     {
-        return Community::findOrFail($id);
+        return Communitie::findOrFail($id);
     }
 
     // Mengupdate komunitas tertentu
     public function update(Request $request, $id)
     {
-        $community = Community::findOrFail($id);
+        $community = Communitie::findOrFail($id);
         $community->update($request->all());
         return response()->json($community);
     }
@@ -63,7 +77,7 @@ class Komunitas extends Controller
     // Menghapus komunitas
     public function destroy($id)
     {
-        Community::destroy($id);
+        Communitie::destroy($id);
         return response()->json(['message' => 'Community deleted']);
     }
 }
