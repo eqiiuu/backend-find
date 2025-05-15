@@ -132,7 +132,9 @@ class authController extends Controller
                 'lokasi' => 'nullable|string|max:255',
                 'tentang' => 'nullable|string',
                 'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120',
-                'background' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120'
+                'background' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120',
+                'delete_photo' => 'nullable|string|in:true,false',
+                'delete_background' => 'nullable|string|in:true,false'
             ]);
 
             $user = Auth::user();
@@ -155,8 +157,41 @@ class authController extends Controller
                 $user->password = Hash::make($request->password);
             }
 
+            // Handle photo deletion
+            if ($request->has('delete_photo') && $request->input('delete_photo') === 'true') {
+                \Log::info('Deleting profile photo for user', ['user_id' => $user->user_id]);
+                
+                // Delete old photo if exists
+                if ($user->photo) {
+                    try {
+                        $oldPath = str_replace('/storage/', '', $user->photo);
+                        if (Storage::disk('public')->exists($oldPath)) {
+                            Storage::disk('public')->delete($oldPath);
+                            \Log::info('Profile photo deleted', ['path' => $oldPath]);
+                        } else {
+                            // Try with absolute path if relative path fails
+                            $absolutePath = storage_path('app/public/' . $oldPath);
+                            if (file_exists($absolutePath)) {
+                                unlink($absolutePath);
+                                \Log::info('Profile photo deleted using absolute path', ['path' => $absolutePath]);
+                            } else {
+                                \Log::warning('Profile photo not found', ['relative_path' => $oldPath, 'absolute_path' => $absolutePath]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to delete profile photo', [
+                            'error' => $e->getMessage(),
+                            'path' => $oldPath ?? null
+                        ]);
+                    }
+                }
+                
+                // Set photo to null
+                $user->photo = null;
+                \Log::info('Profile photo set to null');
+            }
             // Handle photo upload
-            if ($request->hasFile('photo')) {
+            else if ($request->hasFile('photo')) {
                 try {
                     $photo = $request->file('photo');
                     if (!$photo->isValid()) {
@@ -211,8 +246,41 @@ class authController extends Controller
                 }
             }
 
+            // Handle background deletion
+            if ($request->has('delete_background') && $request->input('delete_background') === 'true') {
+                \Log::info('Deleting profile background for user', ['user_id' => $user->user_id]);
+                
+                // Delete old background if exists
+                if ($user->background) {
+                    try {
+                        $oldPath = str_replace('/storage/', '', $user->background);
+                        if (Storage::disk('public')->exists($oldPath)) {
+                            Storage::disk('public')->delete($oldPath);
+                            \Log::info('Profile background deleted', ['path' => $oldPath]);
+                        } else {
+                            // Try with absolute path if relative path fails
+                            $absolutePath = storage_path('app/public/' . $oldPath);
+                            if (file_exists($absolutePath)) {
+                                unlink($absolutePath);
+                                \Log::info('Profile background deleted using absolute path', ['path' => $absolutePath]);
+                            } else {
+                                \Log::warning('Profile background not found', ['relative_path' => $oldPath, 'absolute_path' => $absolutePath]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to delete profile background', [
+                            'error' => $e->getMessage(),
+                            'path' => $oldPath ?? null
+                        ]);
+                    }
+                }
+                
+                // Set background to null
+                $user->background = null;
+                \Log::info('Profile background set to null');
+            }
             // Handle background upload
-            if ($request->hasFile('background')) {
+            else if ($request->hasFile('background')) {
                 try {
                     $background = $request->file('background');
                     if (!$background->isValid()) {
