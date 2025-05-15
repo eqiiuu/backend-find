@@ -134,7 +134,8 @@ class authController extends Controller
                 'photo' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120',
                 'background' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:5120',
                 'delete_photo' => 'nullable|string|in:true,false',
-                'delete_background' => 'nullable|string|in:true,false'
+                'delete_background' => 'nullable|string|in:true,false',
+                'use_profile_photo' => 'nullable|string|in:true,false'
             ]);
 
             $user = Auth::user();
@@ -231,12 +232,21 @@ class authController extends Controller
 
                     // Store new photo
                     $fileName = 'profile_' . time() . '.' . $photo->getClientOriginalExtension();
+                    \Log::info('Attempting to store photo', [
+                        'filename' => $fileName,
+                        'storage_path' => storage_path('app/public/profile_photos'),
+                        'disk' => 'public'
+                    ]);
                     $photoPath = $photo->storeAs('profile_photos', $fileName, 'public');
                     if (!$photoPath) {
                         throw new \Exception('Failed to store photo file');
                     }
                     $user->photo = '/storage/' . $photoPath;
-                    \Log::info('Photo stored successfully', ['path' => $photoPath]);
+                    \Log::info('Photo stored successfully', [
+                        'path' => $photoPath, 
+                        'full_path' => storage_path('app/public/'.$photoPath),
+                        'url_path' => '/storage/' . $photoPath
+                    ]);
                 } catch (\Exception $e) {
                     \Log::error('Error handling photo upload', [
                         'error' => $e->getMessage(),
@@ -275,9 +285,14 @@ class authController extends Controller
                     }
                 }
                 
-                // Set background to null
-                $user->background = null;
-                \Log::info('Profile background set to null');
+                // Set background to null or use profile photo
+                if ($request->has('use_profile_photo') && $request->input('use_profile_photo') === 'true' && $user->photo) {
+                    $user->background = $user->photo;
+                    \Log::info('Profile background set to user profile photo');
+                } else {
+                    $user->background = null;
+                    \Log::info('Profile background set to null');
+                }
             }
             // Handle background upload
             else if ($request->hasFile('background')) {
