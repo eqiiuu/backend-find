@@ -93,7 +93,7 @@
                         <label for="gambar" class="form-label">Image</label>
                         @if($community->gambar)
                             <div class="mb-2">
-                                <img src="{{ asset($community->gambar) }}" alt="Current Image" class="img-thumbnail" style="max-height: 200px;">
+                                <img src="{{ asset('storage/' . $community->gambar) }}" alt="Current Image" class="img-thumbnail" style="max-height: 200px;">
                             </div>
                         @endif
                         <input type="file" class="form-control @error('gambar') is-invalid @enderror" id="gambar" name="gambar" accept="image/*">

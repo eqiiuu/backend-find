@@ -31,7 +31,7 @@
                         <td class="text-muted">{{ $community->community_id }}</td>
                         <td>
                             @if($community->gambar)
-                                <img src="{{ asset($community->gambar) }}" alt="Community Image" class="img-thumbnail" style="max-height: 50px;">
+                                <img src="{{ asset('storage/' . $community->gambar) }}" alt="Community Image" class="img-thumbnail" style="max-height: 50px;">
                             @else
                                 <span class="text-muted">No image</span>
                             @endif
@@ -142,7 +142,7 @@
                                                             <label class="form-label">Current Image</label>
                                                             @if($community->gambar)
                                                                 <div class="mb-2">
-                                                                    <img src="{{ asset($community->gambar) }}" alt="Current Image" class="img-fluid rounded">
+                                                                    <img src="{{ asset('storage/' . $community->gambar) }}" alt="Current Image" class="img-fluid rounded">
                                                                 </div>
                                                             @else
                                                                 <p class="text-muted">No image uploaded</p>

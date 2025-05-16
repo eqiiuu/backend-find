@@ -202,8 +202,9 @@ class adminController extends Controller
 
             $image = $request->file('gambar');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/communities'), $imageName);
-            $changes['gambar'] = 'images/communities/' . $imageName;
+            // Store in the correct directory using Laravel's storage system
+            $imagePath = $request->file('gambar')->store('images/communities', 'public');
+            $changes['gambar'] = $imagePath;
         }
 
         if (!empty($changes)) {
@@ -347,8 +348,9 @@ class adminController extends Controller
         if ($request->hasFile('gambar')) {
             $image = $request->file('gambar');
             $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/communities'), $imageName);
-            $community->gambar = 'images/communities/' . $imageName;
+            // Store in the correct directory using Laravel's storage system
+            $imagePath = $request->file('gambar')->store('images/communities', 'public');
+            $community->gambar = $imagePath;
         }
 
         $community->save();

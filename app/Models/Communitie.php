@@ -71,16 +71,15 @@ class Communitie extends Model
                 return $this->gambar;
             }
 
-            // Remove any 'public/' or 'storage/' prefix
-            $path = str_replace(['public/', 'storage/'], '', $this->gambar);
+            // Remove any 'public/' prefix if it exists
+            $path = str_replace('public/', '', $this->gambar);
             
-            // Make sure we use the correct path (communities, not community)
-            if (!str_starts_with($path, 'images/communities/')) {
-                $path = 'images/communities/' . basename($path);
-            }
-            
-            // Log the final path for debugging
-            \Log::info('Community image path in model: ' . $path);
+            // Log the image path for debugging
+            \Log::info('Community image path:', [
+                'original' => $this->gambar,
+                'processed' => $path,
+                'full_url' => url('storage/' . $path)
+            ]);
             
             return url('storage/' . $path);
         }

@@ -44,7 +44,9 @@ class Postingan extends Controller
         $imagePath = null;
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('images', 'public');
+            // Store in images/posts folder
+            $imagePath = $request->file('image')->store('images/posts', 'public');
+            \Log::info('Stored post image at: ' . $imagePath);
         }
     
         Post::create([
@@ -78,9 +80,13 @@ class Postingan extends Controller
 
         // Update the post's comments array with the new comment ID
         $post = Post::findOrFail($request->post_id);
-        $comments = $post->comments ?? [];
-        $comments[] = $comment->comment_id;
-        $post->update(['comments' => $comments]);
+        $currentComments = is_array($post->comments) ? $post->comments : [];
+        $currentComments[] = $comment->comment_id;
+        $post->comments = $currentComments;
+        $post->save();
+
+        // Load the comment with its relationships
+        $comment->load(['user', 'replies.user']);
 
         return response()->json([
             'message' => 'Comment added successfully',

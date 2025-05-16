@@ -63,13 +63,16 @@
                                 <div class="accordion-item border-0">
                                     <div class="accordion-header">
                                         <button class="btn btn-link text-decoration-none w-100 text-start p-3" type="button" data-bs-toggle="collapse" data-bs-target="#commentsCollapse{{ $post->post_id }}" aria-expanded="false" aria-controls="commentsCollapse{{ $post->post_id }}">
-                                            <i class='bx bx-message-square-dots'></i> Comments ({{ $post->comments->count() }})
+                                            <i class='bx bx-message-square-dots'></i> Comments ({{ $post->comments()->count() }})
                                         </button>
                                     </div>
                                     <div id="commentsCollapse{{ $post->post_id }}" class="accordion-collapse collapse" data-bs-parent="#commentsAccordion{{ $post->post_id }}">
                                         <div class="accordion-body bg-light">
-                                            @if($post->comments->count() > 0)
-                                                @foreach($post->comments as $comment)
+                                            @php
+                                                $comments = $post->comments()->with(['user', 'replies.user'])->get();
+                                            @endphp
+                                            @if($comments->count() > 0)
+                                                @foreach($comments as $comment)
                                                     <div class="comment mb-3">
                                                         <div class="d-flex align-items-start">
                                                             <div class="flex-grow-1">
@@ -105,7 +108,6 @@
                             </div>
                         </td>
                     </tr>
-
                     <!-- Edit Post Modal -->
                     <div class="modal fade" id="editPostModal{{ $post->post_id }}" tabindex="-1" aria-labelledby="editPostModalLabel{{ $post->post_id }}" aria-hidden="true">
                         <div class="modal-dialog modal-lg">

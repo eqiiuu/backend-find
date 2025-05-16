@@ -19,7 +19,8 @@ class Post extends Model
         'image',
         'description',
         'community_id',
-        'post_date'
+        'post_date',
+        'comments'
     ];
 
     protected $attributes = [
@@ -29,6 +30,7 @@ class Post extends Model
     protected $casts = [
         'post_date' => 'date',
         'image' => 'string',
+        'comments' => 'array'
     ];
 
     protected $appends = ['image_url'];
@@ -65,7 +67,22 @@ class Post extends Model
     public function getImageUrlAttribute()
     {
         if ($this->image) {
-            return url('storage/' . $this->image);
+            // If it's already a full URL, return it
+            if (filter_var($this->image, FILTER_VALIDATE_URL)) {
+                return $this->image;
+            }
+
+            // Remove any 'public/' prefix if it exists
+            $path = str_replace('public/', '', $this->image);
+            
+            // Log the image path for debugging
+            \Log::info('Post image path:', [
+                'original' => $this->image,
+                'processed' => $path,
+                'full_url' => url('storage/' . $path)
+            ]);
+            
+            return url('storage/' . $path);
         }
         return null;
     }
