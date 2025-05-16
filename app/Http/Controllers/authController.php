@@ -187,6 +187,12 @@ class authController extends Controller
                     }
                 }
                 
+                // Check if background is using the same photo and clear it
+                if ($user->background === $user->photo) {
+                    \Log::info('Clearing background as it uses the same photo');
+                    $user->background = null;
+                }
+                
                 // Set photo to null
                 $user->photo = null;
                 \Log::info('Profile photo set to null');
@@ -308,15 +314,15 @@ class authController extends Controller
                         'size' => $background->getSize()
                     ]);
 
-                    // Delete old background if exists
-                    if ($user->background) {
+                    // Delete old background if exists (only if it's different from profile photo)
+                    if ($user->background && $user->background !== $user->photo) {
                         try {
                             $oldPath = str_replace('/storage/', '', $user->background);
                             if (Storage::disk('public')->exists($oldPath)) {
                                 Storage::disk('public')->delete($oldPath);
                                 \Log::info('Old background deleted', ['path' => $oldPath]);
                             } else {
-                                // Coba hapus dengan path absolut jika path relatif tidak berhasil
+                                // Try with absolute path if relative path fails
                                 $absolutePath = storage_path('app/public/' . $oldPath);
                                 if (file_exists($absolutePath)) {
                                     unlink($absolutePath);
