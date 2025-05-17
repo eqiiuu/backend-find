@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function(){
     
     // Posts routes
     Route::get('/posts', [Postingan::class, 'index']);
+    Route::get('/posts/recommended', [Postingan::class, 'getRecommendedPosts']);
     Route::post('/post',[Postingan::class,'post']);
     Route::get('/user/community-posts', [Postingan::class, 'getUserCommunityPosts']);
     Route::get('/posts/{post_id}', [Postingan::class, 'show']);

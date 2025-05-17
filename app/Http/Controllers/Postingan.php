@@ -196,4 +196,56 @@ class Postingan extends Controller
             ], 500);
         }
     }
+
+    public function getRecommendedPosts()
+    {
+        $user = auth()->user();
+        $user_id = $user->user_id;
+
+        // Get communities the user is part of
+        $userCommunities = Communitie::where('owner_id', $user_id)
+            ->orWhereJsonContains('anggota', $user_id)
+            ->pluck('community_id');
+
+        // Get posts the user has liked
+        $likedPosts = Like::where('user_id', $user_id)
+            ->pluck('post_id');
+
+        // Get communities of posts the user has liked
+        $likedCommunities = Post::whereIn('post_id', $likedPosts)
+            ->pluck('community_id')
+            ->unique();
+
+        // Combine all relevant community IDs
+        $relevantCommunities = $userCommunities->merge($likedCommunities)->unique();
+
+        // Get recommended posts based on:
+        // 1. Posts from similar communities (that user isn't part of)
+        // 2. Recent and popular posts
+        // 3. Exclude posts from communities user is already part of
+        $recommendedPosts = Post::with(['community', 'user', 'likes'])
+            ->whereHas('community', function($query) use ($relevantCommunities) {
+                $query->whereNotIn('community_id', $relevantCommunities);
+            })
+            ->withCount('likes')
+            ->orderBy('likes_count', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->take(20)
+            ->get();
+
+        // If we don't have enough recommended posts, add some recent popular posts
+        if ($recommendedPosts->count() < 20) {
+            $additionalPosts = Post::with(['community', 'user', 'likes'])
+                ->whereNotIn('post_id', $recommendedPosts->pluck('post_id'))
+                ->withCount('likes')
+                ->orderBy('likes_count', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->take(20 - $recommendedPosts->count())
+                ->get();
+
+            $recommendedPosts = $recommendedPosts->merge($additionalPosts);
+        }
+
+        return response()->json($recommendedPosts);
+    }
 }
