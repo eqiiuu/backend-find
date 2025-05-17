@@ -12,7 +12,72 @@ class Komunitas extends Controller
     // Menampilkan semua komunitas
     public function index()
     {
-        return Communitie::with('owner')->get();
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                \Log::error('No authenticated user found');
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            \Log::info('Auth check - Current user:', [
+                'user_id' => $user->user_id,
+                'name' => $user->name,
+                'email' => $user->email
+            ]);
+
+            // Get communities with owner relationship
+            $communities = Communitie::with('owner')->get();
+
+            // Validate each community's data
+            $validatedCommunities = $communities->map(function($community) use ($user) {
+                // Ensure owner_id is properly set
+                if (empty($community->owner_id)) {
+                    \Log::warning("Community found with no owner_id:", [
+                        'community_id' => $community->community_id,
+                        'name' => $community->name
+                    ]);
+                }
+
+                // Log ownership check
+                \Log::info("Community ownership check:", [
+                    'community_id' => $community->community_id,
+                    'name' => $community->name,
+                    'owner_id' => $community->owner_id,
+                    'current_user_id' => $user->user_id,
+                    'is_owner' => $community->owner_id === $user->user_id
+                ]);
+
+                // Make sure all necessary fields are included
+                return [
+                    'community_id' => $community->community_id,
+                    'name' => $community->name,
+                    'description' => $community->description,
+                    'owner_id' => $community->owner_id,
+                    'owner' => $community->owner ? [
+                        'user_id' => $community->owner->user_id,
+                        'name' => $community->owner->name
+                    ] : null,
+                    'gambar' => $community->gambar,
+                    'capacity' => $community->capacity,
+                    'anggota' => $community->anggota
+                ];
+            });
+
+            // Log summary
+            \Log::info('Communities summary:', [
+                'total_communities' => $communities->count(),
+                'user_owned_communities' => $communities->where('owner_id', $user->user_id)->count(),
+                'user_id' => $user->user_id
+            ]);
+
+            return response()->json($validatedCommunities);
+        } catch (\Exception $e) {
+            \Log::error('Error in communities index:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
     }
 
     public function createCommunity(Request $request)

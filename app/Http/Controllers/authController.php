@@ -389,7 +389,18 @@ class authController extends Controller
 
     public function user()
     {
-        return response()->json('SELAMAT DATANG DI F!ND, '.Auth()->User()-> name);
+        $user = Auth::user();
+        return response()->json([
+            'user_id' => $user->user_id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'nomor_telepon' => $user->nomor_telepon,
+            'photo' => $user->photo,
+            'background' => $user->background,
+            'lokasi' => $user->lokasi,
+            'tentang' => $user->tentang
+        ]);
     }
     public function logout(Request $request)
     {
