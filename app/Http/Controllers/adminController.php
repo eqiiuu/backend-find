@@ -297,6 +297,7 @@ class adminController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'username' => 'required|string|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
             'nomor_telepon' => 'nullable|string|max:20'
@@ -304,7 +305,7 @@ class adminController extends Controller
 
         $user = new User();
         $user->name = $request->name;
-        $user->username = $request->name;
+        $user->username = $request->username;
         $user->email = $request->email;
         $user->password = Hash::make($request->password);
         $user->nomor_telepon = $request->nomor_telepon;
