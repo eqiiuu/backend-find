@@ -13,7 +13,7 @@ class Postingan extends Controller
     public function index()
     {
         // Get all posts with community and user information
-        $posts = Post::with(['community', 'user', 'likes'])
+        $posts = Post::with(['community', 'user', 'likes', 'comments'])
                     ->orderBy('created_at', 'desc')
                     ->get();
         
