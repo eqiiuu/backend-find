@@ -33,7 +33,7 @@ class Post extends Model
         'comments' => 'array'
     ];
 
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'likes_count', 'is_liked'];
 
     protected static function boot()
     {
@@ -62,6 +62,27 @@ class Post extends Model
     public function community()
     {
         return $this->belongsTo(Communitie::class, 'community_id', 'community_id');
+    }
+
+    // Relationship with likes
+    public function likes()
+    {
+        return $this->hasMany(Like::class, 'post_id', 'post_id');
+    }
+
+    // Get the number of likes
+    public function getLikesCountAttribute()
+    {
+        return $this->likes()->count();
+    }
+
+    // Check if the current user has liked the post
+    public function getIsLikedAttribute()
+    {
+        if (!auth()->check()) {
+            return false;
+        }
+        return $this->likes()->where('user_id', auth()->user()->user_id)->exists();
     }
 
     public function getImageUrlAttribute()

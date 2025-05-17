@@ -27,6 +27,9 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/user/community-posts', [Postingan::class, 'getUserCommunityPosts']);
     Route::get('/posts/{post_id}', [Postingan::class, 'show']);
     
+    // Like routes
+    Route::post('/posts/{post_id}/toggle-like', [Postingan::class, 'toggleLike']);
+    
     // Comment routes
     Route::post('/comments', [Postingan::class, 'addComment']);
     Route::get('/posts/{post_id}/comments', [Postingan::class, 'getComments']);

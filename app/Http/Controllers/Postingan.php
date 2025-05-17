@@ -6,13 +6,14 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\comments;
 use App\Models\Communitie;
+use App\Models\Like;
 
 class Postingan extends Controller
 {
     public function index()
     {
         // Get all posts with community and user information
-        $posts = Post::with(['community', 'user'])
+        $posts = Post::with(['community', 'user', 'likes'])
                     ->orderBy('created_at', 'desc')
                     ->get();
         
@@ -152,10 +153,47 @@ class Postingan extends Controller
         })
         ->with(['user', 'community', 'comments' => function($query) {
             $query->with('user');
-        }])
+        }, 'likes'])
         ->latest('post_date')
         ->paginate(10);
 
         return response()->json($posts);
+    }
+
+    public function toggleLike($postId)
+    {
+        try {
+            $user_id = auth()->user()->user_id;
+            $post = Post::findOrFail($postId);
+            
+            $existingLike = Like::where('user_id', $user_id)
+                               ->where('post_id', $postId)
+                               ->first();
+
+            if ($existingLike) {
+                $existingLike->delete();
+                return response()->json([
+                    'message' => 'Post unliked successfully',
+                    'is_liked' => false,
+                    'likes_count' => $post->likes()->count()
+                ]);
+            }
+
+            Like::create([
+                'user_id' => $user_id,
+                'post_id' => $postId
+            ]);
+
+            return response()->json([
+                'message' => 'Post liked successfully',
+                'is_liked' => true,
+                'likes_count' => $post->likes()->count()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error toggling like',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }
