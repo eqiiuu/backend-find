@@ -223,29 +223,29 @@ class Postingan extends Controller
         // 1. Posts from similar communities (that user isn't part of)
         // 2. Recent and popular posts
         // 3. Exclude posts from communities user is already part of
+        // 4. Add randomization to get different posts each time
         $recommendedPosts = Post::with(['community', 'user', 'likes'])
             ->whereHas('community', function($query) use ($relevantCommunities) {
                 $query->whereNotIn('community_id', $relevantCommunities);
             })
             ->withCount('likes')
-            ->orderBy('likes_count', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->take(20)
+            ->orderBy(\DB::raw('RAND()')) // Add random ordering
+            ->take(10)
             ->get();
 
-        // If we don't have enough recommended posts, add some recent popular posts
-        if ($recommendedPosts->count() < 20) {
+        // If we don't have enough recommended posts, add some random popular posts
+        if ($recommendedPosts->count() < 10) {
             $additionalPosts = Post::with(['community', 'user', 'likes'])
                 ->whereNotIn('post_id', $recommendedPosts->pluck('post_id'))
                 ->withCount('likes')
-                ->orderBy('likes_count', 'desc')
-                ->orderBy('created_at', 'desc')
-                ->take(20 - $recommendedPosts->count())
+                ->orderBy(\DB::raw('RAND()')) // Add random ordering here too
+                ->take(10 - $recommendedPosts->count())
                 ->get();
 
             $recommendedPosts = $recommendedPosts->merge($additionalPosts);
         }
 
-        return response()->json($recommendedPosts);
+        // Randomize the final collection again
+        return response()->json($recommendedPosts->shuffle());
     }
 }
