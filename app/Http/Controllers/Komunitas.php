@@ -12,7 +12,7 @@ class Komunitas extends Controller
     // Menampilkan semua komunitas
     public function index()
     {
-        return Communitie::all();
+        return Communitie::with('owner')->get();
     }
 
     public function createCommunity(Request $request)
@@ -46,12 +46,16 @@ class Komunitas extends Controller
             'capacity' => $request->capacity
         ]);
 
+        // Load the owner relation
+        $community->load('owner');
+
         // Log the created community data for debugging
         \Log::info('Created community:', [
             'id' => $community->community_id,
             'name' => $community->name,
             'image_path' => $community->gambar,
-            'image_url' => $community->gambar_url
+            'image_url' => $community->gambar_url,
+            'owner' => $community->owner
         ]);
 
         return response()->json([
@@ -63,7 +67,7 @@ class Komunitas extends Controller
     // Menampilkan detail komunitas tertentu
     public function show($id)
     {
-        return Communitie::findOrFail($id);
+        return Communitie::with('owner')->findOrFail($id);
     }
 
     // Mengupdate komunitas tertentu
@@ -71,6 +75,7 @@ class Komunitas extends Controller
     {
         $community = Communitie::findOrFail($id);
         $community->update($request->all());
+        $community->load('owner');
         return response()->json($community);
     }
 
