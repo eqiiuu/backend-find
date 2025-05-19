@@ -29,7 +29,7 @@
                         <td class="text-muted">{{ $post->post_id }}</td>
                         <td>
                             @if($post->image)
-                                <img src="{{ asset($post->image) }}" alt="Post Image" class="img-thumbnail" style="max-height: 50px;">
+                                <img src="{{ asset('storage/' . $post->image) }}" alt="Post Image" class="img-thumbnail" style="max-height: 50px;">
                             @else
                                 <span class="text-muted">No image</span>
                             @endif
@@ -146,7 +146,7 @@
                                                     <label class="form-label">Current Image</label>
                                                     @if($post->image)
                                                         <div class="mb-2">
-                                                            <img src="{{ asset($post->image) }}" alt="Current Image" class="img-fluid rounded">
+                                                            <img src="{{ asset('storage/' . $post->image) }}" alt="Current Image" class="img-fluid rounded">
                                                         </div>
                                                     @else
                                                         <p class="text-muted">No image uploaded</p>

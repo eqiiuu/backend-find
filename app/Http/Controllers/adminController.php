@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\ChatGroup;
+use Illuminate\Support\Facades\Storage;
 
 class adminController extends Controller
 {
@@ -263,14 +264,13 @@ class adminController extends Controller
         // Handle image upload if present
         if ($request->hasFile('image')) {
             // Delete old image if exists
-            if ($post->image && file_exists(public_path($post->image))) {
-                unlink(public_path($post->image));
+            if ($post->image && Storage::disk('public')->exists($post->image)) {
+                Storage::disk('public')->delete($post->image);
             }
 
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/posts'), $imageName);
-            $changes['image'] = 'images/posts/' . $imageName;
+            // Store in the correct directory using Laravel's storage system
+            $imagePath = $request->file('image')->store('images/posts', 'public');
+            $changes['image'] = $imagePath;
         }
 
         if (!empty($changes)) {
@@ -390,7 +390,7 @@ class adminController extends Controller
             'description' => 'required|string',
             'user_id' => 'required|exists:users,user_id',
             'community_id' => 'required|exists:communities,community_id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
         ]);
 
         $post = new Post();
@@ -401,10 +401,9 @@ class adminController extends Controller
         $post->post_date = now();
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            $image->move(public_path('images/posts'), $imageName);
-            $post->image = 'images/posts/' . $imageName;
+            // Store in the correct directory using Laravel's storage system
+            $imagePath = $request->file('image')->store('images/posts', 'public');
+            $post->image = $imagePath;
         }
 
         $post->save();
