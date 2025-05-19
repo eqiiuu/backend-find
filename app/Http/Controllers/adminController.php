@@ -295,23 +295,40 @@ class adminController extends Controller
 
     public function storeUser(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'nomor_telepon' => 'nullable|string|max:20'
-        ]);
+        try {
+            $request->validate([
+                'username' => 'required|string|unique:users,username',
+                'email' => 'required|email|unique:users,email',
+                'password' => 'required|string|min:6|confirmed',
+                'nomor_telepon' => 'required|string|max:20'
+            ]);
 
-        $user = new User();
-        $user->name = $request->name;
-        $user->username = $request->username;
-        $user->email = $request->email;
-        $user->password = Hash::make($request->password);
-        $user->nomor_telepon = $request->nomor_telepon;
-        $user->save();
+            $user = new User();
+            $user->user_id = 'usr_' . Str::random(10);
+            $user->name = $request->username;
+            $user->username = $request->username;
+            $user->email = $request->email;
+            $user->password = Hash::make($request->password);
+            $user->nomor_telepon = $request->nomor_telepon;
+            $user->save();
 
-        return redirect()->route('admin.users.index')->with('success', 'User created successfully');
+            \Log::info('User created successfully', [
+                'user_id' => $user->user_id,
+                'username' => $user->username,
+                'email' => $user->email
+            ]);
+
+            return redirect()->route('admin.users.index')->with('success', 'User created successfully');
+        } catch (\Exception $e) {
+            \Log::error('Error creating user', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Failed to create user: ' . $e->getMessage());
+        }
     }
 
     public function createCommunity()

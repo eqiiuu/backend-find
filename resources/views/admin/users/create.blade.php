@@ -13,9 +13,9 @@
         <form action="{{ route('admin.users.store') }}" method="POST">
             @csrf
             <div class="mb-3">
-                <label for="name" class="form-label">Name</label>
-                <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required>
-                @error('name')
+                <label for="username" class="form-label">Username</label>
+                <input type="text" class="form-control @error('username') is-invalid @enderror" id="username" name="username" value="{{ old('username') }}" required>
+                @error('username')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
@@ -43,7 +43,7 @@
 
             <div class="mb-3">
                 <label for="nomor_telepon" class="form-label">Phone Number</label>
-                <input type="text" class="form-control @error('nomor_telepon') is-invalid @enderror" id="nomor_telepon" name="nomor_telepon" value="{{ old('nomor_telepon') }}">
+                <input type="text" class="form-control @error('nomor_telepon') is-invalid @enderror" id="nomor_telepon" name="nomor_telepon" value="{{ old('nomor_telepon') }}" required>
                 @error('nomor_telepon')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
