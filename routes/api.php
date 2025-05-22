@@ -2,10 +2,14 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\authController;
 use App\Http\Controllers\Postingan;
 use App\Http\Controllers\Komunitas;
 use App\Http\Controllers\ChatController;
+
+// Broadcast authentication route (must be before the other routes)
+Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 //Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //  return $request->user();
@@ -51,3 +55,6 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::put('/communities/{id}', [Komunitas::class, 'update']);
     Route::delete('/communities/{id}', [Komunitas::class, 'destroy']);
 });
+
+// Test route for chat groups (remove this in production)
+Route::get('/test/chat-groups', [ChatController::class, 'testChatGroups']);

@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*'],
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'storage/*', 'broadcasting/auth'],
 
     'allowed_methods' => ['*'],
 
@@ -23,7 +23,9 @@ return [
         'http://localhost:8081',
         'http://10.0.2.2:8081',
         'http://localhost:8000',
-        'http://10.0.2.2:8000'
+        'http://10.0.2.2:8000',
+        'http://192.168.17.61:8000',  // Match the IP in apiConfig.js
+        'http://192.168.17.61:8081'
     ],
 
     'allowed_origins_patterns' => [],

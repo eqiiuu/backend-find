@@ -34,7 +34,7 @@ class ChatGroup extends Model
     
     public function messages()
     {
-        return $this->hasMany(Messages::class);
+        return $this->hasMany(Messages::class, 'chat_group_id', 'chat_group_id');
     }
 
     // Helper method to check if group is at capacity
