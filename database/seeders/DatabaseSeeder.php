@@ -6,6 +6,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Admins;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,9 +22,10 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        Admins::create([
+        \App\Models\Admins::create([
             'username' => 'Admin',
             'password' => Hash::make('rifat123'),
+            'user_id' => 'usr_' . Str::random(10)
         ]);
     }
 }
