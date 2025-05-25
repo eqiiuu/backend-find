@@ -16,7 +16,13 @@ return new class extends Migration
             $table->string('name');
             $table->integer('capacity');
             $table->boolean('is_private');
+            $table->string('community_id')->nullable();
             $table->timestamps();
+
+            $table->foreign('community_id')
+                  ->references('community_id')
+                  ->on('communities')
+                  ->onDelete('cascade');
         });
         
         Schema::create('chat_group_user', function (Blueprint $table) {

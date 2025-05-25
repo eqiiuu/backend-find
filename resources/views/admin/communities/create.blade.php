@@ -93,6 +93,16 @@
                 @enderror
             </div>
 
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input @error('create_chat_group') is-invalid @enderror" id="create_chat_group" name="create_chat_group" value="1" {{ old('create_chat_group') ? 'checked' : '' }}>
+                    <label class="form-check-label" for="create_chat_group">Create a chat group for this community</label>
+                    @error('create_chat_group')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+
             <div class="text-end">
                 <button type="submit" class="btn btn-primary">
                     <i class='bx bx-save'></i> Create Community

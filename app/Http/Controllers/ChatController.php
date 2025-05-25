@@ -24,17 +24,27 @@ class ChatController extends Controller
             'capacity' => 'required|integer|min:2',
             'is_private' => 'nullable|boolean',
             'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,user_id'
+            'user_ids.*' => 'exists:users,user_id',
+            'community_id' => 'nullable|exists:communities,community_id'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        // For private chats between two users
+        if ($request->is_private) {
+            if (count($request->user_ids) !== 1) {
+                return response()->json(['error' => 'Private chats can only be created with exactly one other user'], 422);
+            }
+            $request->capacity = 2; // Force capacity to 2 for private chats
+        }
+
         $group = ChatGroup::create([
             'name' => $request->name,
             'capacity' => $request->capacity,
-            'is_private' => $request->is_private ?? false
+            'is_private' => $request->is_private ?? false,
+            'community_id' => $request->community_id
         ]);
 
         // Add the creator to the group
@@ -47,7 +57,7 @@ class ChatController extends Controller
             }
         }
 
-        return response()->json($group->load('users'), 201);
+        return response()->json($group->load(['users', 'community']), 201);
     }
 
     /**

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Models\ChatGroup;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class adminController extends Controller
 {
@@ -340,40 +341,97 @@ class adminController extends Controller
 
     public function storeCommunity(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'required|string',
-            'capacity' => 'required|integer|min:1',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric',
-            'anggota' => 'nullable|array',
-            'anggota.*' => 'exists:users,user_id',
-            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120'
-        ]);
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'capacity' => 'required|integer|min:1',
+                'latitude' => 'required|numeric',
+                'longitude' => 'required|numeric',
+                'anggota' => 'nullable|array',
+                'anggota.*' => 'exists:users,user_id',
+                'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5120',
+                'create_chat_group' => 'nullable|boolean'
+            ]);
 
-        // Get user_id from name
-        $user = User::where('name', $request->owner_name)->firstOrFail();
+            // Get user_id from name
+            $user = User::where('name', $request->owner_name)->firstOrFail();
 
-        $community = new Communitie();
-        $community->name = $request->name;
-        $community->description = $request->description;
-        $community->capacity = $request->capacity;
-        $community->latitude = $request->latitude;
-        $community->longitude = $request->longitude;
-        $community->owner_id = $user->user_id;
-        $community->anggota = $request->anggota;
+            // Start a database transaction
+            DB::beginTransaction();
 
-        if ($request->hasFile('gambar')) {
-            $image = $request->file('gambar');
-            $imageName = time() . '.' . $image->getClientOriginalExtension();
-            // Store in the correct directory using Laravel's storage system
-            $imagePath = $request->file('gambar')->store('images/communities', 'public');
-            $community->gambar = $imagePath;
+            try {
+                $community = new Communitie();
+                $community->name = $request->name;
+                $community->description = $request->description;
+                $community->capacity = $request->capacity;
+                $community->latitude = $request->latitude;
+                $community->longitude = $request->longitude;
+                $community->owner_id = $user->user_id;
+                $community->anggota = $request->anggota;
+
+                if ($request->hasFile('gambar')) {
+                    $image = $request->file('gambar');
+                    $imageName = time() . '.' . $image->getClientOriginalExtension();
+                    $image->move(public_path('images/communities'), $imageName);
+                    $community->gambar = 'images/communities/' . $imageName;
+                }
+
+                // Save the community first to get its ID
+                $community->save();
+                
+                // Refresh the community data from the database
+                $community->refresh();
+                
+                \Log::info('Community created with ID:', [
+                    'community_id' => $community->community_id,
+                    'community' => $community->toArray()
+                ]);
+
+                // Create chat group if toggle is checked
+                if ($request->boolean('create_chat_group')) {
+                    \Log::info('Creating chat group for community:', [
+                        'community_id' => $community->community_id
+                    ]);
+
+                    $chatGroup = new ChatGroup();
+                    $chatGroup->chat_group_id = 'chat_' . Str::random(8);
+                    $chatGroup->name = $community->name . ' Chat';
+                    $chatGroup->capacity = $community->capacity;
+                    $chatGroup->is_private = false;
+                    $chatGroup->community_id = $community->community_id;
+                    
+                    \Log::info('Chat group before save:', [
+                        'chat_group' => $chatGroup->toArray()
+                    ]);
+                    
+                    $chatGroup->save();
+
+                    // Add all community members to the chat group
+                    $members = array_merge([$community->owner_id], $community->anggota ?? []);
+                    $chatGroup->users()->attach($members);
+                }
+
+                // If we got here, commit the transaction
+                DB::commit();
+
+                return redirect()->route('admin.communities.index')->with('success', 'Community created successfully');
+            } catch (\Exception $e) {
+                // If anything fails, rollback the transaction
+                DB::rollBack();
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to create community', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Failed to create community: ' . $e->getMessage());
         }
-
-        $community->save();
-
-        return redirect()->route('admin.communities.index')->with('success', 'Community created successfully');
     }
 
     public function createPost()
@@ -456,15 +514,27 @@ class adminController extends Controller
             'capacity' => 'required|integer|min:2',
             'is_private' => 'nullable|boolean',
             'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,user_id'
+            'user_ids.*' => 'exists:users,user_id',
+            'community_id' => 'nullable|exists:communities,community_id'
         ]);
+
+        // For private chats between two users
+        if ($request->is_private) {
+            if (count($request->user_ids) !== 1) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'Private chats can only be created with exactly one other user');
+            }
+            $request->capacity = 2; // Force capacity to 2 for private chats
+        }
 
         // Create the chat group first
         $group = new ChatGroup();
-        $group->chat_group_id = 'chat_' . Str::random(8); // Explicitly set the chat_group_id
+        $group->chat_group_id = 'chat_' . Str::random(8);
         $group->name = $request->name;
         $group->capacity = $request->capacity;
         $group->is_private = $request->boolean('is_private');
+        $group->community_id = $request->community_id;
         $group->save();
 
         // After the group is created, add all users at once
@@ -496,11 +566,22 @@ class adminController extends Controller
             'user_ids.*' => 'exists:users,user_id'
         ]);
 
+        // For private chats between two users
+        if ($request->is_private) {
+            if (count($request->user_ids) !== 1) {
+                return redirect()
+                    ->back()
+                    ->with('error', 'Private chats can only have exactly one other user');
+            }
+            $request->capacity = 2; // Force capacity to 2 for private chats
+        }
+
         // Update basic info
         $group->update([
             'name' => $request->name,
             'capacity' => $request->capacity,
             'is_private' => $request->boolean('is_private')
+            // Note: community_id is not included here as it cannot be changed after creation
         ]);
 
         // Sync users (this will remove users not in the new list and add new ones)

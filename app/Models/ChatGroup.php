@@ -18,12 +18,19 @@ class ChatGroup extends Model
         'chat_group_id',
         'name',
         'capacity',
-        'is_private'
+        'is_private',
+        'community_id'
     ];
 
     protected $casts = [
         'is_private' => 'boolean',
     ];
+
+    // Relationship with community
+    public function community()
+    {
+        return $this->belongsTo(Communitie::class, 'community_id', 'community_id');
+    }
 
     // Many-to-many relationship with users
     public function users()
