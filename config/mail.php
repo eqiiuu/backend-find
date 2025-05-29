@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'smtp'),
+    'default' => env('MAIL_MAILER', 'resend'),
 
     /*
     |--------------------------------------------------------------------------
@@ -94,6 +94,14 @@ return [
                 'postmark',
             ],
         ],
+
+        'resend' => [
+            'transport' => 'resend',
+            'options' => [
+                'api_key' => env('RESEND_API_KEY'),
+                'timeout' => 30,
+            ],
+        ],
     ],
 
     /*
@@ -108,8 +116,8 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Example'),
+        'address' => env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev'),
+        'name' => env('MAIL_FROM_NAME', 'Find App'),
     ],
 
     /*
