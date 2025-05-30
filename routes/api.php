@@ -7,6 +7,8 @@ use App\Http\Controllers\authController;
 use App\Http\Controllers\Postingan;
 use App\Http\Controllers\Komunitas;
 use App\Http\Controllers\ChatController;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MailTest;
 
 // Broadcast authentication route (must be before the other routes)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
@@ -20,6 +22,12 @@ Route::post('/store',[authController::class,'store']);
 Route::post('/delete',[authController::class,'delete']);
 Route::get('/tampilkan/{id}',[authController::class,'tampilkan']);
 Route::get('/getpost/{id}',[Postingan::class,'show']);
+
+// Password Reset Routes
+Route::get('/reset-password/{token}', [authController::class, 'showResetForm'])->name('password.reset');
+Route::post('/forgot-password', [authController::class, 'forgotPassword'])->name('password.email');
+Route::post('/reset-password', [authController::class, 'resetPassword'])->name('password.update');
+
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('/user',[authController::class,'user']);
     Route::post('/logout',[authController::class,'logout']);
@@ -58,3 +66,16 @@ Route::middleware('auth:sanctum')->group(function(){
 
 // Test route for chat groups (remove this in production)
 Route::get('/test/chat-groups', [ChatController::class, 'testChatGroups']);
+
+// Test email route
+Route::get('/test-email', function () {
+    try {
+        Mail::raw('Test email from F!ND', function($message) {
+            $message->to('neoplayz085@gmail.com')
+                   ->subject('Test Email from F!ND');
+        });
+        return response()->json(['message' => 'Email sent successfully']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});

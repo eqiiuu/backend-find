@@ -18,6 +18,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'mobile_deep_link' => env('MOBILE_DEEP_LINK', 'findinc://'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
