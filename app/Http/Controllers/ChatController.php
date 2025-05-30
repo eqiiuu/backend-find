@@ -183,7 +183,7 @@ class ChatController extends Controller
             }
             
             $groups = Auth::user()->chatGroups()
-                ->with(['users'])
+                ->with(['users', 'community']) // Load community relationship
                 ->get()
                 ->map(function ($group) {
                     // Get latest message for this group
@@ -206,6 +206,14 @@ class ChatController extends Controller
                     } else {
                         $group->display_name = $group->name;
                     }
+
+                    // Log community data for debugging
+                    \Log::info('Chat group community data:', [
+                        'chat_group_id' => $group->chat_group_id,
+                        'community_id' => $group->community_id,
+                        'community' => $group->community
+                    ]);
+
                     return $group;
                 });
 
