@@ -22,15 +22,22 @@ class DatabaseSeeder extends Seeder
         //     'email' => 'test@example.com',
         // ]);
 
-        // Create default admin user
-        \App\Models\Admins::create([
-            'username' => 'Admin',
-            'email' => 'admin@example.com',
-            'name' => 'Super Admin',
-            'password' => Hash::make('rifat123'),
-            'user_id' => 'usr_' . Str::random(10),
-            'is_super_admin' => true,
-            'is_active' => true
+        // Create default admin user if it doesn't exist
+        if (!Admins::where('username', 'Admin')->exists()) {
+            Admins::create([
+                'username' => 'Admin',
+                'email' => 'admin@example.com',
+                'name' => 'Super Admin',
+                'password' => Hash::make('rifat123'),
+                'user_id' => 'usr_' . Str::random(10),
+                'is_super_admin' => true,
+                'is_active' => true
+            ]);
+        }
+
+        // Call the UserSeeder
+        $this->call([
+            UserSeeder::class,
         ]);
     }
 }
