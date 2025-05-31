@@ -90,7 +90,11 @@ class Komunitas extends Controller
             'description' => 'required',
             'anggota' => 'nullable',
             'capacity' => 'required|integer|min:1',
+            'owner_name' => 'required|string'
         ]);
+
+        // Get user_id from name
+        $user = \App\Models\User::where('name', $request->owner_name)->firstOrFail();
 
         $imagePath = null;
 
@@ -100,14 +104,31 @@ class Komunitas extends Controller
             \Log::info('Stored community image at: ' . $imagePath);
         }
 
+        // Decode anggota if it's a JSON string
+        $anggota = $request->anggota;
+        if (is_string($anggota)) {
+            try {
+                $anggota = json_decode($anggota, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Invalid JSON in anggota field');
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error decoding anggota JSON:', [
+                    'error' => $e->getMessage(),
+                    'anggota' => $anggota
+                ]);
+                $anggota = [];
+            }
+        }
+
         $community = Communitie::create([
-            'owner_id' => Auth::user()->user_id,
+            'owner_id' => $user->user_id,
             'name' => $request->name,
             'gambar' => $imagePath,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
             'description' => $request->description,
-            'anggota' => $request->anggota ?? [],
+            'anggota' => $anggota ?? [],
             'capacity' => $request->capacity
         ]);
 
@@ -120,7 +141,8 @@ class Komunitas extends Controller
             'name' => $community->name,
             'image_path' => $community->gambar,
             'image_url' => $community->gambar_url,
-            'owner' => $community->owner
+            'owner' => $community->owner,
+            'anggota' => $community->anggota
         ]);
 
         return response()->json([

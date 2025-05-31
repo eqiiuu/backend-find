@@ -25,13 +25,19 @@ class adminController extends Controller
     public function registerPost(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            'username' => 'required|string|min:3|max:50|unique:admins,username',
+            'email' => 'required|email|unique:admins,email',
+            'password' => 'required|string|min:8|confirmed',
+            'name' => 'nullable|string|max:100'
         ]);
 
         $admin = new Admins();
         $admin->username = $request->username;
+        $admin->email = $request->email;
+        $admin->name = $request->name;
         $admin->password = Hash::make($request->password);
+        $admin->is_super_admin = false; // Only first admin can be super admin
+        $admin->is_active = true;
         $admin->save();
 
         return redirect()->route('login')->with('success', 'Admin berhasil terdaftar');
@@ -45,28 +51,36 @@ class adminController extends Controller
     public function loginPost(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            'username' => 'required|string',
+            'password' => 'required|string',
         ]);
 
-        // Try to find the admin by username
-        $admin = Admins::where('username', $request->username)->first();
+        // Try to find the admin by username or email
+        $admin = Admins::where('username', $request->username)
+            ->orWhere('email', $request->username)
+            ->first();
 
-        // Check if admin exists and password matches
-        if ($admin && Hash::check($request->password, $admin->password)) {
-            Auth::guard('admin')->login($admin, true); // Use admin guard
+        // Check if admin exists, is active, and password matches
+        if ($admin && $admin->isActive() && Hash::check($request->password, $admin->password)) {
+            Auth::guard('admin')->login($admin, $request->filled('remember'));
             $request->session()->regenerate();
-            return $this->showDashboard();
+            
+            // Update last login information
+            $admin->updateLastLogin($request);
+            
+            return redirect()->intended(route('admin.dashboard'));
         }
 
-        return redirect()->route('login')->with('error', 'Username atau password salah');
+        return redirect()->route('login')
+            ->withInput($request->only('username'))
+            ->withErrors(['username' => 'Username atau password salah']);
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        Auth::guard('admin')->logout(); // Use admin guard
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        Auth::guard('admin')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         return redirect()->route('login');
     }
 

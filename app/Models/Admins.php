@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 
 class Admins extends Authenticatable
 {
@@ -20,8 +21,13 @@ class Admins extends Authenticatable
     protected $fillable = [
         'user_id',
         'username',
+        'email',
         'name',
         'password',
+        'is_super_admin',
+        'is_active',
+        'last_login_at',
+        'last_login_ip'
     ];
 
     protected $hidden = [
@@ -31,6 +37,9 @@ class Admins extends Authenticatable
 
     protected $casts = [
         'password' => 'hashed',
+        'is_super_admin' => 'boolean',
+        'is_active' => 'boolean',
+        'last_login_at' => 'datetime'
     ];
 
     /**
@@ -111,5 +120,32 @@ class Admins extends Authenticatable
     public function tokenable()
     {
         return $this->morphTo('tokenable', 'tokenable_type', 'tokenable_id', 'user_id');
+    }
+
+    /**
+     * Check if admin is super admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->is_super_admin;
+    }
+
+    /**
+     * Check if admin is active
+     */
+    public function isActive(): bool
+    {
+        return $this->is_active;
+    }
+
+    /**
+     * Update last login information
+     */
+    public function updateLastLogin(Request $request): void
+    {
+        $this->update([
+            'last_login_at' => now(),
+            'last_login_ip' => $request->ip()
+        ]);
     }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\PasswordResetController;
 use Illuminate\Support\Facades\Log;
 use Resend\Laravel\Facades\Resend;
+use App\Http\Controllers\Pengguna;
 
 // Broadcast authentication route (must be before the other routes)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
@@ -27,6 +28,9 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::get('/user',[authController::class,'user']);
     Route::post('/logout',[authController::class,'logout']);
     Route::post('/update',[authController::class,'update']);
+    
+    // Users route
+    Route::get('/users', [Pengguna::class, 'index']);
     
     // Posts routes
     Route::get('/posts', [Postingan::class, 'index']);
@@ -119,3 +123,5 @@ Route::post('/test-email', function (Request $request) {
         ], 500);
     }
 });
+
+Route::post('/admin/login', [authController::class, 'adminApiLogin']);

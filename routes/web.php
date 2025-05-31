@@ -24,7 +24,7 @@ Route::post('/admin/register', [adminController::class, 'registerPost'])->name('
 Route::get('/login', [adminController::class, 'showLogin'])->name('login');
 Route::post('/admin/login', [adminController::class, 'loginPost'])->name('admin.login.post');
 
-Route::middleware(['auth:admin'])->group(function () {
+Route::middleware(['auth:admin', 'admin.active'])->group(function () {
     Route::get('/dashboard', [adminController::class, 'showDashboard'])->name('admin.dashboard');
     Route::post('/admin/logout', [adminController::class, 'logout'])->name('admin.logout');
 

@@ -38,19 +38,51 @@ class authController extends Controller
 
     public function login(Request $request)
     {
-        $request->validate([ 
-            'email'=>'required',
-            'password'=>'required'
+        $request->validate([
+            'email' => 'required',
+            'password' => 'required'
         ]);
-        $user=User::where('email', $request->email)->first();
-        if(!$user || !Hash::check($request->password,$user->password)){
-            return response()->json(['message'=>'UNAUTHORIZED'],401);
+        $loginField = $request->email;
+        // Cek ke tabel admins dulu
+        $admin = \App\Models\Admins::where('username', $loginField)->first();
+        if ($admin && \Hash::check($request->password, $admin->password)) {
+            $token = $admin->createToken('Admin-Auth-Token')->plainTextToken;
+            return response()->json([
+                'user' => [
+                    'user_id' => $admin->user_id,
+                    'username' => $admin->username,
+                    'email' => $admin->email,
+                    'name' => $admin->name,
+                    'is_admin' => true
+                ],
+                'token' => $token,
+                'role' => 'admin'
+            ], 200);
         }
-        $token=$user->createToken('Auth-token')->plainTextToken;
+        // Jika bukan admin, cek ke users
+        $user = User::where('email', $loginField)
+            ->orWhere('username', $loginField)
+            ->first();
+        if (!$user || !\Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'UNAUTHORIZED'], 401);
+        }
+        $token = $user->createToken('Auth-token')->plainTextToken;
         return response()->json([
-            'user'=>$user,
-            'token'=>$token
-        ],200);
+            'user' => [
+                'user_id' => $user->user_id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'name' => $user->name,
+                'nomor_telepon' => $user->nomor_telepon,
+                'photo' => $user->photo,
+                'background' => $user->background,
+                'lokasi' => $user->lokasi,
+                'tentang' => $user->tentang,
+                'is_admin' => false
+            ],
+            'token' => $token,
+            'role' => 'user'
+        ], 200);
     }
 
     public function adminLogin(Request $request)
@@ -387,8 +419,18 @@ class authController extends Controller
         }
     }
 
-    public function user()
+    public function user(Request $request)
     {
+        // Cek apakah yang login adalah admin
+        if (Auth::guard('admin')->check()) {
+            $admin = Auth::guard('admin')->user();
+            return response()->json([
+                'user_id' => $admin->user_id,
+                'username' => $admin->username,
+                'email' => $admin->email,
+                'is_admin' => true
+            ]);
+        }
         $user = Auth::user();
         return response()->json([
             'user_id' => $user->user_id,
@@ -399,7 +441,8 @@ class authController extends Controller
             'photo' => $user->photo,
             'background' => $user->background,
             'lokasi' => $user->lokasi,
-            'tentang' => $user->tentang
+            'tentang' => $user->tentang,
+            'is_admin' => false
         ]);
     }
     public function logout(Request $request)
@@ -448,6 +491,30 @@ class authController extends Controller
         ]);
 
         return response()->json(['message' => 'BERHASIL MENAMBAHKAN GAMBAR!']);
+    }
+
+    public function adminApiLogin(Request $request)
+    {
+        $request->validate([
+            'username' => 'required',
+            'password' => 'required',
+        ]);
+
+        $admin = \App\Models\Admins::where('username', $request->username)->first();
+        if (!$admin || !\Hash::check($request->password, $admin->password)) {
+            return response()->json(['message' => 'UNAUTHORIZED'], 401);
+        }
+        // Buat token Sanctum
+        $token = $admin->createToken('Admin-Auth-Token')->plainTextToken;
+        return response()->json([
+            'admin' => [
+                'user_id' => $admin->user_id,
+                'username' => $admin->username,
+                'is_admin' => true
+            ],
+            'token' => $token,
+            'role' => 'admin'
+        ], 200);
     }
 
 }
