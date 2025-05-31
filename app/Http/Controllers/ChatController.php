@@ -86,9 +86,24 @@ class ChatController extends Controller
                 return response()->json(['error' => 'Chat group not found'], 404);
             }
             
-            // Validate message
+            // Validate message with improved emoji handling
             $validator = Validator::make($request->all(), [
-                'message' => 'required|string|max:1000'
+                'message' => [
+                    'required',
+                    'string',
+                    'max:1000',
+                    function ($attribute, $value, $fail) {
+                        // Check if message contains valid UTF-8 characters
+                        if (!mb_check_encoding($value, 'UTF-8')) {
+                            $fail('Message contains invalid characters');
+                        }
+                        
+                        // Check if message is not too long after encoding
+                        if (mb_strlen($value, 'UTF-8') > 1000) {
+                            $fail('Message is too long');
+                        }
+                    },
+                ]
             ]);
 
             if ($validator->fails()) {
@@ -109,14 +124,20 @@ class ChatController extends Controller
                 return response()->json(['error' => 'You are not a member of this group'], 403);
             }
 
+            // Sanitize and encode message
+            $message = $request->message;
+            $message = mb_convert_encoding($message, 'UTF-8', 'auto');
+            $message = preg_replace('/[\x00-\x1F\x7F]/u', '', $message); // Remove control characters
+            $message = trim($message);
+
             // Create message with error handling
             try {
-                $message = Messages::create([
+                $messageModel = Messages::create([
                     'chat_group_id' => $chatGroup->chat_group_id,
                     'user_id' => Auth::id(),
-                    'message' => $request->message
+                    'message' => $message
                 ]);
-                \Log::info('Message created:', ['message_id' => $message->id]);
+                \Log::info('Message created:', ['message_id' => $messageModel->message_id]);
             } catch (\Exception $e) {
                 \Log::error('Failed to create message:', [
                     'error' => $e->getMessage(),
@@ -128,18 +149,18 @@ class ChatController extends Controller
 
             // Broadcast with error handling
             try {
-                broadcast(new NewMessage($message, $chatGroup->chat_group_id))->toOthers();
+                broadcast(new NewMessage($messageModel, $chatGroup->chat_group_id))->toOthers();
                 \Log::info('Message broadcasted successfully');
             } catch (\Exception $e) {
                 \Log::error('Broadcasting failed:', [
                     'error' => $e->getMessage(),
-                    'message_id' => $message->id
+                    'message_id' => $messageModel->message_id
                 ]);
                 \Log::error($e->getTraceAsString());
                 // Don't return error here, as message is already saved
             }
 
-            return response()->json($message->load('user'), 201);
+            return response()->json($messageModel->load('user'), 201);
             
         } catch (\Exception $e) {
             \Log::error('Error sending message: ' . $e->getMessage());
