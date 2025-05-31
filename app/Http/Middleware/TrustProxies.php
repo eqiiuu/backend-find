@@ -25,4 +25,20 @@ class TrustProxies extends Middleware
         Request::HEADER_X_FORWARDED_PORT |
         Request::HEADER_X_FORWARDED_PROTO |
         Request::HEADER_X_FORWARDED_AWS_ELB;
+
+    public function handle($request, \Closure $next)
+    {
+        // Log storage access requests
+        if (strpos($request->path(), 'storage/') === 0) {
+            \Log::info('Storage access request:', [
+                'path' => $request->path(),
+                'method' => $request->method(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'headers' => $request->headers->all()
+            ]);
+        }
+        
+        return parent::handle($request, $next);
+    }
 }

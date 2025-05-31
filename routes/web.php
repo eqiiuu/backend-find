@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\adminController;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,3 +63,39 @@ Route::middleware(['auth:admin', 'admin.active'])->group(function () {
     Route::put('/admin/chats/{id}', [adminController::class, 'updateChat'])->name('admin.chats.update');
     Route::delete('/admin/chats/{id}', [adminController::class, 'deleteChat'])->name('admin.chats.delete');
 });
+
+// Special route for accessing storage files
+Route::get('/storage/{path}', function (Request $request, $path) {
+    // Log the request
+    \Log::info('Storage file access:', [
+        'path' => $path,
+        'full_path' => storage_path('app/public/' . $path),
+        'exists' => Storage::disk('public')->exists($path),
+        'ip' => $request->ip(),
+        'user_agent' => $request->userAgent()
+    ]);
+
+    // Check if file exists
+    if (!Storage::disk('public')->exists($path)) {
+        \Log::warning('File not found in storage:', ['path' => $path]);
+        return response()->json(['error' => 'File not found'], 404);
+    }
+
+    // Get file mime type
+    $mime = Storage::disk('public')->mimeType($path);
+    
+    // Set headers
+    $headers = [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=31536000',
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+        'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With'
+    ];
+
+    // Return file
+    return response()->file(
+        storage_path('app/public/' . $path),
+        $headers
+    );
+})->where('path', '.*');
