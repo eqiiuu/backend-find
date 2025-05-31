@@ -275,15 +275,15 @@ class ChatController extends Controller
      */
     public function removeUserFromGroup(Request $request, ChatGroup $group)
     {
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,user_id'
-        ]);
+        // Use the authenticated user's ID
+        $user_id = Auth::id();
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+        // Check if user is a member of the group
+        if (!$group->users()->where('chat_group_user.user_id', $user_id)->exists()) {
+            return response()->json(['error' => 'You are not a member of this group'], 403);
         }
 
-        if ($group->removeUser($request->user_id)) {
+        if ($group->removeUser($user_id)) {
             return response()->json(['message' => 'User removed from group successfully']);
         }
 
