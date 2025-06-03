@@ -27,6 +27,7 @@ Route::get('/getpost/{id}',[Postingan::class,'show']);
 Route::get('/reset-password/{token}', [authController::class, 'showResetForm'])->name('password.reset');
 Route::post('/forgot-password', [authController::class, 'forgotPassword'])->name('password.email');
 Route::post('/reset-password', [authController::class, 'resetPassword'])->name('password.update');
+Route::get('/getplaces', [Komunitas::class, 'getPlacesWithinRadius']);
 
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('/user',[authController::class,'user']);

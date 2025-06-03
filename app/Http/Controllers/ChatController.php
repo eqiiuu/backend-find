@@ -116,6 +116,7 @@ class ChatController extends Controller
                     'user_id' => Auth::id(),
                     'message' => $request->message
                 ]);
+                $message->refresh(); // Ensure message_id is populated
                 \Log::info('Message created:', ['message_id' => $message->id]);
             } catch (\Exception $e) {
                 \Log::error('Failed to create message:', [
@@ -128,7 +129,9 @@ class ChatController extends Controller
 
             // Broadcast with error handling
             try {
+                \Log::info('Attempting to broadcast NewMessage event.');
                 broadcast(new NewMessage($message, $chatGroup->chat_group_id))->toOthers();
+                \Log::info('NewMessage event broadcast attempt finished.');
                 \Log::info('Message broadcasted successfully');
             } catch (\Exception $e) {
                 \Log::error('Broadcasting failed:', [
@@ -161,7 +164,7 @@ class ChatController extends Controller
         $messages = $group->messages()
             ->with('user')
             ->latest()
-            ->paginate(20);
+            ->get();
 
         return response()->json($messages);
     }
