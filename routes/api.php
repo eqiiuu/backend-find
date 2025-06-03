@@ -9,6 +9,7 @@ use App\Http\Controllers\Komunitas;
 use App\Http\Controllers\ChatController;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MailTest;
+use App\Http\Controllers\PasswordResetController;
 
 // Broadcast authentication route (must be before the other routes)
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
@@ -23,10 +24,6 @@ Route::post('/delete',[authController::class,'delete']);
 Route::get('/tampilkan/{id}',[authController::class,'tampilkan']);
 Route::get('/getpost/{id}',[Postingan::class,'show']);
 
-// Password Reset Routes
-Route::get('/reset-password/{token}', [authController::class, 'showResetForm'])->name('password.reset');
-Route::post('/forgot-password', [authController::class, 'forgotPassword'])->name('password.email');
-Route::post('/reset-password', [authController::class, 'resetPassword'])->name('password.update');
 Route::get('/getplaces', [Komunitas::class, 'getPlacesWithinRadius']);
 
 Route::middleware('auth:sanctum')->group(function(){
@@ -64,6 +61,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::put('/communities/{id}', [Komunitas::class, 'update']);
     Route::delete('/communities/{id}', [Komunitas::class, 'destroy']);
 });
+
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+Route::post('/verify-token', [PasswordResetController::class, 'verifyToken']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Test route for chat groups (remove this in production)
 Route::get('/test/chat-groups', [ChatController::class, 'testChatGroups']);

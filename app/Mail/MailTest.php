@@ -13,14 +13,14 @@ class MailTest extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $resetLink;
+    public $otp;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($resetLink)
+    public function __construct($otp)
     {
-        $this->resetLink = $resetLink;
+        $this->otp = $otp;
     }
 
     /**
@@ -29,7 +29,7 @@ class MailTest extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Password Reset Request',
+            subject: 'Your Password Reset OTP Code',
         );
     }
 
@@ -41,7 +41,7 @@ class MailTest extends Mailable
         return new Content(
             view: 'emails.reset-password',
             with: [
-                'resetLink' => $this->resetLink
+                'otp' => $this->otp
             ]
         );
     }

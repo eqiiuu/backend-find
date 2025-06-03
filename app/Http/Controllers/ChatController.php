@@ -164,7 +164,7 @@ class ChatController extends Controller
         $messages = $group->messages()
             ->with('user')
             ->latest()
-            ->get();
+            ->paginate(20);
 
         return response()->json($messages);
     }
