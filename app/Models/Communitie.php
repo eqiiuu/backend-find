@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 
 class Communitie extends Model
 {
@@ -40,6 +41,25 @@ class Communitie extends Model
 
     protected $appends = ['gambar_url'];
 
+
+    public function scopeWithinRadius($query, $latitude, $longitude, $radius)
+    {
+        $haversine = "6371 * 2 * ASIN(SQRT(
+            POW(SIN(RADIANS((latitude - ?) / 2)), 2) +
+            COS(RADIANS(?)) *
+            COS(RADIANS(latitude)) *
+            POW(SIN(RADIANS((longitude - ?) / 2)), 2)
+        ))";
+
+        return $query
+            ->selectRaw("*, {$haversine} AS distance", [
+                $latitude,
+                $latitude,
+                $longitude
+            ])
+            ->having('distance', '<=', $radius)
+            ->orderBy('distance');
+    }
     // (Opsional) Relasi ke model User
     public function owner()
     {

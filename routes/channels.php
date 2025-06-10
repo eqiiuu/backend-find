@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Broadcast;
 use App\Models\ChatGroup;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,6 +20,11 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('chat.group.{groupId}', function ($user, $groupId) {
+    Log::info('Broadcasting auth request for chat group channel', [
+        'user_id' => $user ? $user->user_id : 'null',
+        'channel' => 'chat.group.' . $groupId,
+        'socket_id' => request()->input('socket_id'),
+    ]);
     $group = ChatGroup::findOrFail($groupId);
     
     // Check if the user is a member of this chat group

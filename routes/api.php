@@ -24,6 +24,9 @@ Route::post('/store',[authController::class,'store']);
 Route::post('/delete',[authController::class,'delete']);
 Route::get('/tampilkan/{id}',[authController::class,'tampilkan']);
 Route::get('/getpost/{id}',[Postingan::class,'show']);
+
+Route::get('/getplaces', [Komunitas::class, 'getPlacesWithinRadius']);
+
 Route::middleware('auth:sanctum')->group(function(){
     Route::get('/user',[authController::class,'user']);
     Route::post('/logout',[authController::class,'logout']);
@@ -62,6 +65,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::put('/communities/{id}', [Komunitas::class, 'update']);
     Route::delete('/communities/{id}', [Komunitas::class, 'destroy']);
 });
+
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+Route::post('/verify-token', [PasswordResetController::class, 'verifyToken']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
 
 // Test route for chat groups (remove this in production)
 Route::get('/test/chat-groups', [ChatController::class, 'testChatGroups']);

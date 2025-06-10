@@ -12,6 +12,13 @@ use App\Models\Post;
 use App\Models\comments;
 use App\Models\Admins;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Auth\Events\PasswordReset;
+use App\Mail\ResetPasswordMail;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MailTest;
+
 class authController extends Controller
 {
     public function register(Request $request)
@@ -149,7 +156,8 @@ class authController extends Controller
 
         $del->delete();
         return response()->json(['message'=>'BERHASIL MENGHAPUS AKUN'],201);
-    }    
+    }
+
     public function update(Request $request)
     {
         try {
@@ -434,9 +442,9 @@ class authController extends Controller
         $user = Auth::user();
         return response()->json([
             'user_id' => $user->user_id,
+            'username' => $user->username,
             'name' => $user->name,
             'email' => $user->email,
-            'username' => $user->username,
             'nomor_telepon' => $user->nomor_telepon,
             'photo' => $user->photo,
             'background' => $user->background,
@@ -460,10 +468,6 @@ class authController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'nomor_telepon' => $user->nomor_telepon,
-            'photo' => $user->photo,
-            'background' => $user->background,
-            'lokasi' => $user->lokasi,
-            'tentang' => $user->tentang
         ]);
     }
 

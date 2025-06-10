@@ -137,7 +137,8 @@ class ChatController extends Controller
                     'user_id' => Auth::id(),
                     'message' => $message
                 ]);
-                \Log::info('Message created:', ['message_id' => $messageModel->message_id]);
+                $message->refresh(); // Ensure message_id is populated
+                \Log::info('Message created:', ['message_id' => $message->id]);
             } catch (\Exception $e) {
                 \Log::error('Failed to create message:', [
                     'error' => $e->getMessage(),
@@ -149,7 +150,9 @@ class ChatController extends Controller
 
             // Broadcast with error handling
             try {
-                broadcast(new NewMessage($messageModel, $chatGroup->chat_group_id))->toOthers();
+                \Log::info('Attempting to broadcast NewMessage event.');
+                broadcast(new NewMessage($message, $chatGroup->chat_group_id))->toOthers();
+                \Log::info('NewMessage event broadcast attempt finished.');
                 \Log::info('Message broadcasted successfully');
             } catch (\Exception $e) {
                 \Log::error('Broadcasting failed:', [
