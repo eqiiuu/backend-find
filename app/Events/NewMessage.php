@@ -21,10 +21,10 @@ class NewMessage implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(Messages $message, $chatGroupId)
+    public function __construct(Messages $message, $chatGroupId = null)
     {
         $this->message = $message;
-        $this->chatGroupId = $chatGroupId;
+        $this->chatGroupId = $chatGroupId ?? $message->chat_group_id;
     }
 
     /**

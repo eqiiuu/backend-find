@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\UnreadMessage;
 
 class ChatController extends Controller
 {
@@ -63,82 +64,81 @@ class ChatController extends Controller
     /**
      * Send a message to a chat group.
      */
-    public function sendMessage(Request $request, $group)
+    public function sendMessage(Request $request, $groupId)
     {
         try {
-            \Log::info('Attempting to send message to group: ' . $group);
-            \Log::info('User ID: ' . Auth::id());
-            \Log::info('Request data:', $request->all());
-            \Log::info('Request headers:', $request->headers->all());
-            
+            \Log::info('Attempting to send message:', [
+                'user_id' => Auth::id(),
+                'group_id' => $groupId,
+                'request_data' => $request->all()
+            ]);
+
             // Validate group ID format
-            if (!Str::startsWith($group, 'chat_')) {
-                \Log::error('Invalid group ID format:', ['group_id' => $group]);
+            if (!preg_match('/^chat_[A-Za-z0-9]{8}$/', $groupId)) {
+                \Log::warning('Invalid group ID format:', ['group_id' => $groupId]);
                 return response()->json(['error' => 'Invalid group ID format'], 400);
             }
-            
-            // Find the chat group
-            try {
-                $chatGroup = ChatGroup::findOrFail($group);
-                \Log::info('Chat group found:', ['group_id' => $chatGroup->chat_group_id]);
-            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-                \Log::error('Chat group not found:', ['group_id' => $group]);
+
+            // Get chat group
+            $chatGroup = ChatGroup::where('chat_group_id', $groupId)->first();
+            if (!$chatGroup) {
+                \Log::warning('Chat group not found:', ['group_id' => $groupId]);
                 return response()->json(['error' => 'Chat group not found'], 404);
             }
-            
-            // Validate message with improved emoji handling
-            $validator = Validator::make($request->all(), [
-                'message' => [
-                    'required',
-                    'string',
-                    'max:1000',
-                    function ($attribute, $value, $fail) {
-                        // Check if message contains valid UTF-8 characters
-                        if (!mb_check_encoding($value, 'UTF-8')) {
-                            $fail('Message contains invalid characters');
-                        }
-                        
-                        // Check if message is not too long after encoding
-                        if (mb_strlen($value, 'UTF-8') > 1000) {
-                            $fail('Message is too long');
-                        }
-                    },
-                ]
-            ]);
 
-            if ($validator->fails()) {
-                \Log::error('Validation failed:', ['errors' => $validator->errors()->toArray()]);
-                return response()->json(['errors' => $validator->errors()], 422);
+            // Validate message
+            $message = $request->input('message');
+            if (empty($message)) {
+                \Log::warning('Empty message content');
+                return response()->json(['error' => 'Message cannot be empty'], 400);
             }
 
-            // Check if user is a member of the group
-            $isMember = $chatGroup->users()->where('chat_group_user.user_id', Auth::id())->exists();
-            \Log::info('User membership check:', [
-                'is_member' => $isMember,
-                'user_id' => Auth::id(),
-                'group_id' => $group
-            ]);
-            
+            // Check if user is member of the group
+            $isMember = $chatGroup->users()->where('users.user_id', Auth::id())->exists();
             if (!$isMember) {
-                \Log::error('User not in group:', ['user_id' => Auth::id(), 'group_id' => $group]);
+                \Log::warning('User is not a member of the group:', [
+                    'user_id' => Auth::id(),
+                    'group_id' => $groupId
+                ]);
                 return response()->json(['error' => 'You are not a member of this group'], 403);
             }
 
-            // Sanitize and encode message
-            $message = $request->message;
-            $message = mb_convert_encoding($message, 'UTF-8', 'auto');
-            $message = preg_replace('/[\x00-\x1F\x7F]/u', '', $message); // Remove control characters
-            $message = trim($message);
-
-            // Create message with error handling
+            DB::beginTransaction();
             try {
-                DB::beginTransaction();
-                
-                $messageModel = Messages::create([
+                // Create the message
+                $messageModel = new Messages([
                     'chat_group_id' => $chatGroup->chat_group_id,
                     'user_id' => Auth::id(),
                     'message' => $message
                 ]);
+                
+                if (!$messageModel->save()) {
+                    throw new \Exception('Failed to save message');
+                }
+
+                // Create unread message entries for all group members except the sender
+                $groupMembers = $chatGroup->users()
+                    ->where('users.user_id', '!=', Auth::id())
+                    ->get();
+
+                foreach ($groupMembers as $member) {
+                    try {
+                        UnreadMessage::create([
+                            'chat_group_id' => $chatGroup->chat_group_id,
+                            'user_id' => $member->user_id,
+                            'message_id' => $messageModel->message_id,
+                            'is_read' => false
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::warning('Failed to create unread message entry:', [
+                            'error' => $e->getMessage(),
+                            'user_id' => $member->user_id,
+                            'message_id' => $messageModel->message_id
+                        ]);
+                        // Continue with other members even if one fails
+                        continue;
+                    }
+                }
                 
                 // Load the user relationship
                 $messageModel->load('user');
@@ -150,47 +150,38 @@ class ChatController extends Controller
                     'chat_group_id' => $messageModel->chat_group_id,
                     'user_id' => $messageModel->user_id
                 ]);
+
+                try {
+                    // Broadcast the new message
+                    broadcast(new NewMessage($messageModel, $chatGroup->chat_group_id))->toOthers();
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to broadcast message:', [
+                        'error' => $e->getMessage(),
+                        'message_id' => $messageModel->message_id
+                    ]);
+                    // Don't throw error here, just log it
+                }
+
+                return response()->json([
+                    'message' => $messageModel,
+                    'status' => 'success'
+                ]);
+
             } catch (\Exception $e) {
                 DB::rollBack();
-                \Log::error('Failed to create message:', [
+                \Log::error('Error in transaction:', [
                     'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'chat_group_id' => $chatGroup->chat_group_id,
-                    'user_id' => Auth::id()
+                    'trace' => $e->getTraceAsString()
                 ]);
-                return response()->json([
-                    'error' => 'Failed to create message',
-                    'details' => $e->getMessage()
-                ], 500);
+                throw $e;
             }
 
-            // Broadcast with error handling
-            try {
-                \Log::info('Attempting to broadcast NewMessage event.');
-                broadcast(new NewMessage($messageModel, $chatGroup->chat_group_id))->toOthers();
-                \Log::info('NewMessage event broadcasted successfully');
-            } catch (\Exception $e) {
-                \Log::error('Broadcasting failed:', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                    'message_id' => $messageModel->message_id
-                ]);
-                // Don't return error here, as message is already saved
-            }
-
-            return response()->json($messageModel, 201);
-            
         } catch (\Exception $e) {
-            \Log::error('Error sending message:', [
+            \Log::error('Error in sendMessage:', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'group_id' => $group,
-                'user_id' => Auth::id()
+                'trace' => $e->getTraceAsString()
             ]);
-            return response()->json([
-                'error' => 'Failed to send message',
-                'details' => $e->getMessage()
-            ], 500);
+            return response()->json(['error' => 'Failed to send message: ' . $e->getMessage()], 500);
         }
     }
 
@@ -235,6 +226,12 @@ class ChatController extends Controller
                 \Log::error('User not in group:', ['user_id' => Auth::id(), 'group_id' => $group]);
                 return response()->json(['error' => 'You are not a member of this group'], 403);
             }
+
+            // Mark all unread messages as read when user loads the chat
+            UnreadMessage::where('chat_group_id', $chatGroup->chat_group_id)
+                ->where('user_id', Auth::id())
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
 
             // Get messages with pagination and error handling
             try {
@@ -339,6 +336,14 @@ class ChatController extends Controller
                         ->first();
                     
                     $group->messages = $latestMessage ? [$latestMessage] : [];
+                    
+                    // Get unread message count
+                    $unreadCount = UnreadMessage::where('chat_group_id', $group->chat_group_id)
+                        ->where('user_id', Auth::id())
+                        ->where('is_read', false)
+                        ->count();
+                    
+                    $group->unread_count = $unreadCount;
                     
                     if ($group->is_private) {
                         // Get the other member's name for private groups
