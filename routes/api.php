@@ -64,6 +64,8 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/communities', [Komunitas::class, 'createCommunity']);
     Route::put('/communities/{id}', [Komunitas::class, 'update']);
     Route::delete('/communities/{id}', [Komunitas::class, 'destroy']);
+    Route::post('/communities/{id}/join-request', [Komunitas::class, 'joinRequest']);
+    Route::post('/communities/{id}/join-response/{user_id}', [Komunitas::class, 'joinResponse']);
 });
 
 Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);

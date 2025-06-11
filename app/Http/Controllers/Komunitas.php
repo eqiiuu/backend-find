@@ -104,4 +104,83 @@ class Komunitas extends Controller
         Communitie::destroy($id);
         return response()->json(['message' => 'KOMUNITAS BERHASIL DIHAPUS']);
     }
+
+    public function joinRequest($id)
+    {
+        try {
+            $community = Communitie::findOrFail($id);
+            $userId = Auth::user()->user_id;
+
+            // Check if user is already a member
+            if (in_array($userId, $community->anggota ?? [])) {
+                return response()->json([
+                    'message' => 'You are already a member of this community'
+                ], 400);
+            }
+
+            // Check if community is at capacity
+            if (count($community->anggota ?? []) >= $community->capacity) {
+                return response()->json([
+                    'message' => 'Community has reached its member capacity'
+                ], 400);
+            }
+
+            // Add user to anggota array
+            $currentAnggota = $community->anggota ?? [];
+            $currentAnggota[] = $userId;
+            $community->anggota = $currentAnggota;
+            $community->save();
+
+            return response()->json([
+                'message' => 'Successfully joined the community',
+                'community' => $community
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to process join request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function joinResponse($id, $userId)
+    {
+        try {
+            $community = Communitie::findOrFail($id);
+            
+            // Check if the current user is the community owner
+            if (Auth::user()->user_id !== $community->owner_id) {
+                return response()->json([
+                    'message' => 'Only the community owner can respond to join requests'
+                ], 403);
+            }
+
+            $request = request();
+            $action = $request->input('action');
+
+            if (!in_array($action, ['accept', 'reject'])) {
+                return response()->json([
+                    'message' => 'Invalid action. Must be either "accept" or "reject"'
+                ], 400);
+            }
+
+            if ($action === 'accept') {
+                // Add user to anggota array if not already a member
+                if (!in_array($userId, $community->anggota ?? [])) {
+                    $currentAnggota = $community->anggota ?? [];
+                    $currentAnggota[] = $userId;
+                    $community->anggota = $currentAnggota;
+                    $community->save();
+                }
+            }
+
+            return response()->json([
+                'message' => 'Join request ' . $action . 'ed successfully',
+                'community' => $community
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to process join response: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
