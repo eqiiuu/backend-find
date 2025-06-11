@@ -132,62 +132,184 @@ class ChatController extends Controller
 
             // Create message with error handling
             try {
+                DB::beginTransaction();
+                
                 $messageModel = Messages::create([
                     'chat_group_id' => $chatGroup->chat_group_id,
                     'user_id' => Auth::id(),
                     'message' => $message
                 ]);
-                $message->refresh(); // Ensure message_id is populated
-                \Log::info('Message created:', ['message_id' => $message->id]);
+                
+                // Load the user relationship
+                $messageModel->load('user');
+                
+                DB::commit();
+                
+                \Log::info('Message created successfully:', [
+                    'message_id' => $messageModel->message_id,
+                    'chat_group_id' => $messageModel->chat_group_id,
+                    'user_id' => $messageModel->user_id
+                ]);
             } catch (\Exception $e) {
+                DB::rollBack();
                 \Log::error('Failed to create message:', [
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                     'chat_group_id' => $chatGroup->chat_group_id,
                     'user_id' => Auth::id()
                 ]);
-                return response()->json(['error' => 'Failed to create message'], 500);
+                return response()->json([
+                    'error' => 'Failed to create message',
+                    'details' => $e->getMessage()
+                ], 500);
             }
 
             // Broadcast with error handling
             try {
                 \Log::info('Attempting to broadcast NewMessage event.');
-                broadcast(new NewMessage($message, $chatGroup->chat_group_id))->toOthers();
-                \Log::info('NewMessage event broadcast attempt finished.');
-                \Log::info('Message broadcasted successfully');
+                broadcast(new NewMessage($messageModel, $chatGroup->chat_group_id))->toOthers();
+                \Log::info('NewMessage event broadcasted successfully');
             } catch (\Exception $e) {
                 \Log::error('Broadcasting failed:', [
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                     'message_id' => $messageModel->message_id
                 ]);
-                \Log::error($e->getTraceAsString());
                 // Don't return error here, as message is already saved
             }
 
-            return response()->json($messageModel->load('user'), 201);
+            return response()->json($messageModel, 201);
             
         } catch (\Exception $e) {
-            \Log::error('Error sending message: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
-            return response()->json(['error' => 'Failed to send message: ' . $e->getMessage()], 500);
+            \Log::error('Error sending message:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'group_id' => $group,
+                'user_id' => Auth::id()
+            ]);
+            return response()->json([
+                'error' => 'Failed to send message',
+                'details' => $e->getMessage()
+            ], 500);
         }
     }
 
     /**
      * Get messages for a chat group.
      */
-    public function getMessages(ChatGroup $group)
+    public function getMessages(Request $request, $group)
     {
-        // Check if user is a member of the group
-        if (!$group->users()->where('chat_group_user.user_id', Auth::id())->exists()) {
-            return response()->json(['error' => 'You are not a member of this group'], 403);
+        try {
+            \Log::info('Attempting to fetch messages for group: ' . $group, [
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
+            
+            // Validate group ID format
+            if (!Str::startsWith($group, 'chat_')) {
+                \Log::error('Invalid group ID format:', ['group_id' => $group]);
+                return response()->json(['error' => 'Invalid group ID format'], 400);
+            }
+            
+            // Find the chat group with error handling
+            try {
+                $chatGroup = ChatGroup::findOrFail($group);
+                \Log::info('Chat group found:', [
+                    'group_id' => $chatGroup->chat_group_id,
+                    'group_name' => $chatGroup->name
+                ]);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                \Log::error('Chat group not found:', ['group_id' => $group]);
+                return response()->json(['error' => 'Chat group not found'], 404);
+            }
+            
+            // Check if user is a member of the group
+            $isMember = $chatGroup->users()->where('chat_group_user.user_id', Auth::id())->exists();
+            \Log::info('User membership check:', [
+                'is_member' => $isMember,
+                'user_id' => Auth::id(),
+                'group_id' => $group
+            ]);
+            
+            if (!$isMember) {
+                \Log::error('User not in group:', ['user_id' => Auth::id(), 'group_id' => $group]);
+                return response()->json(['error' => 'You are not a member of this group'], 403);
+            }
+
+            // Get messages with pagination and error handling
+            try {
+                // Log the query we're about to execute
+                \Log::info('Executing message query for group:', ['group_id' => $group]);
+                
+                $messages = Messages::with(['user' => function($query) {
+                        $query->select('user_id', 'name', 'photo')
+                            ->withDefault([
+                                'user_id' => null,
+                                'name' => 'Unknown User',
+                                'photo' => null
+                            ]);
+                    }])
+                    ->where('chat_group_id', $chatGroup->chat_group_id)
+                    ->orderBy('created_at', 'desc')
+                    ->paginate(50);
+
+                // Log the results
+                \Log::info('Messages retrieved successfully:', [
+                    'group_id' => $group,
+                    'message_count' => $messages->count(),
+                    'total_messages' => $messages->total(),
+                    'first_message' => $messages->first() ? [
+                        'message_id' => $messages->first()->message_id,
+                        'user_id' => $messages->first()->user_id,
+                        'created_at' => $messages->first()->created_at
+                    ] : null
+                ]);
+
+                // Transform the response to ensure correct user data
+                $transformedMessages = $messages->through(function ($message) {
+                    return [
+                        'message_id' => $message->message_id,
+                        'chat_group_id' => $message->chat_group_id,
+                        'user_id' => $message->user_id,
+                        'message' => $message->message,
+                        'created_at' => $message->created_at,
+                        'updated_at' => $message->updated_at,
+                        'user' => $message->user ? [
+                            'user_id' => $message->user->user_id,
+                            'name' => $message->user->name,
+                            'photo' => $message->user->photo ? 
+                                str_replace('storage/storage/', 'storage/', url('storage/' . $message->user->photo)) : 
+                                null
+                        ] : null
+                    ];
+                });
+
+                return response()->json($transformedMessages);
+            } catch (\Exception $e) {
+                \Log::error('Failed to retrieve messages:', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'group_id' => $group,
+                    'sql' => $e instanceof \Illuminate\Database\QueryException ? $e->getSql() : null
+                ]);
+                return response()->json([
+                    'error' => 'Failed to retrieve messages',
+                    'details' => $e->getMessage()
+                ], 500);
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in getMessages:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'group_id' => $group,
+                'user_id' => Auth::id()
+            ]);
+            return response()->json([
+                'error' => 'Failed to retrieve messages',
+                'details' => $e->getMessage()
+            ], 500);
         }
-
-        $messages = $group->messages()
-            ->with('user')
-            ->latest()
-            ->paginate(20);
-
-        return response()->json($messages);
     }
 
     /**
