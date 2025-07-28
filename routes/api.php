@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('/chat/groups/{group}/messages', [ChatController::class, 'sendMessage']);
     Route::post('/chat/groups/{group}/users', [ChatController::class, 'addUserToGroup']);
     Route::delete('/chat/groups/{group}/users', [ChatController::class, 'removeUserFromGroup']);
+    Route::post('/chat/groups/{groupId}/typing', [ChatController::class, 'updateTypingStatus']);
 
     // Community routes
     Route::get('/communities', [Komunitas::class, 'index']);

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\UnreadMessage;
+use App\Events\UserTyping;
 
 class ChatController extends Controller
 {
@@ -521,6 +522,50 @@ class ChatController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ], 500);
+        }
+    }
+
+    /**
+     * Update user's typing status in a chat group.
+     */
+    public function updateTypingStatus(Request $request, $groupId)
+    {
+        try {
+            // Validate group ID format
+            if (!preg_match('/^chat_[A-Za-z0-9]{8}$/', $groupId)) {
+                return response()->json(['error' => 'Invalid group ID format'], 400);
+            }
+
+            // Get chat group
+            $chatGroup = ChatGroup::where('chat_group_id', $groupId)->first();
+            if (!$chatGroup) {
+                return response()->json(['error' => 'Chat group not found'], 404);
+            }
+
+            // Check if user is member of the group
+            $isMember = $chatGroup->users()->where('users.user_id', Auth::id())->exists();
+            if (!$isMember) {
+                return response()->json(['error' => 'You are not a member of this group'], 403);
+            }
+
+            $isTyping = $request->input('is_typing', false);
+            
+            // Broadcast typing status
+            event(new UserTyping(
+                Auth::id(),
+                Auth::user()->name,
+                $groupId,
+                $isTyping
+            ));
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            \Log::error('Error updating typing status:', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'group_id' => $groupId
+            ]);
+            return response()->json(['error' => 'Failed to update typing status'], 500);
         }
     }
 }
